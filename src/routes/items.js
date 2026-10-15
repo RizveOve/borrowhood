@@ -8,7 +8,7 @@ const { today, CAT_KEYS } = require('../util');
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 8 * 1024 * 1024, files: 1 },
+  limits: { fileSize: 4 * 1024 * 1024, files: 1 }, // Netlify functions accept requests up to ~6 MB
   fileFilter: (req, file, cb) => cb(null, ALLOWED_TYPES.includes(file.mimetype)),
 }).single('photo');
 

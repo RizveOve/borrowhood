@@ -67,9 +67,14 @@ function loadLoan(req, res) {
   return loan;
 }
 
+// Go back to the page the action came from (same site only), e.g. the item page or the loans list.
 const back = (req, res, fallback) => {
-  const ref = req.get('Referer');
-  res.redirect(ref && ref.startsWith(`${req.protocol}://${req.get('host')}/`) ? ref : fallback);
+  let target = fallback;
+  try {
+    const ref = new URL(req.get('Referer'));
+    if (ref.host === (req.get('X-Forwarded-Host') || req.get('Host'))) target = ref.pathname + ref.search;
+  } catch { /* no or invalid referer */ }
+  res.redirect(target);
 };
 
 router.post('/loans/:id/approve', requireAuth, (req, res) => {

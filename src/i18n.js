@@ -68,7 +68,7 @@ const en = {
   'form.description': 'Description', 'form.description_ph': "Condition, what's included, anything borrowers should know.",
   'form.save': 'Save changes', 'form.list': 'List item',
   'err.title': 'What are you lending? Add a title.', 'err.category': 'Pick a category.',
-  'err.location': 'Where can neighbours pick it up?', 'err.photo': 'Photo must be an image under 8 MB.',
+  'err.location': 'Where can neighbours pick it up?', 'err.photo': 'Photo must be an image under 4 MB.',
   'flash.listed': 'Your item is listed. Thanks for sharing!', 'flash.saved': 'Saved.',
   'flash.item_out': 'This item has an approved loan. Mark it returned or decline it first.', 'flash.item_removed': '"{title}" was removed.',
 
@@ -197,7 +197,7 @@ const nb = {
   'form.description': 'Beskrivelse', 'form.description_ph': 'Tilstand, hva som følger med og ting låneren bør vite.',
   'form.save': 'Lagre endringer', 'form.list': 'Legg ut',
   'err.title': 'Hva låner du ut? Legg til en tittel.', 'err.category': 'Velg en kategori.',
-  'err.location': 'Hvor kan naboene hente den?', 'err.photo': 'Bildet må være under 8 MB.',
+  'err.location': 'Hvor kan naboene hente den?', 'err.photo': 'Bildet må være under 4 MB.',
   'flash.listed': 'Tingen din er lagt ut. Takk for at du deler!', 'flash.saved': 'Lagret.',
   'flash.item_out': 'Denne tingen har et godkjent lån. Merk den som levert eller avslå først.', 'flash.item_removed': '«{title}» er fjernet.',
 

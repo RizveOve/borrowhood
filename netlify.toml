@@ -1,0 +1,13 @@
+# Netlify: static files from public/, everything else handled by netlify/functions/app.mjs.
+# Data (SQLite file + photos) is kept in Netlify Blobs – see src/netlify.js.
+[build]
+  command = "npm run build"
+  publish = "public"
+
+[build.environment]
+  NODE_VERSION = "22"
+  AWS_LAMBDA_JS_RUNTIME = "nodejs22.x"
+
+[functions]
+  node_bundler = "esbuild"
+  included_files = ["views/**", "seed/photos/**", "public/style.css", "public/app.js"]

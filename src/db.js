@@ -3,14 +3,46 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
+const { ROOT } = require('./paths');
 
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'data', 'borrowhood.db');
+const DB_PATH = process.env.DB_PATH || path.join(ROOT, 'data', 'borrowhood.db');
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 
-const db = new DatabaseSync(DB_PATH);
-db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 3000;');
+// On Netlify the file is copied to and from Blobs, so it must be self-contained (no WAL side files).
+const JOURNAL = process.env.DB_JOURNAL === 'delete' ? 'DELETE' : 'WAL';
 
-db.exec(`
+let conn;
+let generation = 0;
+
+// Statements prepared at module load keep working after the connection is reopened (see replaceWith).
+function prepare(sql) {
+  let stmt;
+  let gen = -1;
+  const current = () => {
+    if (gen !== generation) {
+      stmt = conn.prepare(sql);
+      gen = generation;
+    }
+    return stmt;
+  };
+  return {
+    get: (...args) => current().get(...args),
+    all: (...args) => current().all(...args),
+    run: (...args) => current().run(...args),
+  };
+}
+
+const db = { prepare, exec: (sql) => conn.exec(sql) };
+
+function open() {
+  conn = new DatabaseSync(DB_PATH);
+  conn.exec(`PRAGMA journal_mode = ${JOURNAL}; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 3000;`);
+  generation++;
+  migrate();
+}
+
+function migrate() {
+  db.exec(`
 CREATE TABLE IF NOT EXISTS neighbourhoods (
   id          INTEGER PRIMARY KEY,
   name        TEXT NOT NULL,
@@ -76,14 +108,27 @@ CREATE INDEX IF NOT EXISTS idx_items_owner ON items(owner_id);
 CREATE INDEX IF NOT EXISTS idx_loans_item ON loans(item_id, status);
 CREATE INDEX IF NOT EXISTS idx_loans_borrower ON loans(borrower_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, is_read);
-`);
+  `);
 
-// Lightweight migrations for databases created by earlier versions.
-const itemCols = db.prepare('PRAGMA table_info(items)').all().map((c) => c.name);
-if (!itemCols.includes('photo_credit')) db.exec('ALTER TABLE items ADD COLUMN photo_credit TEXT');
-if (!itemCols.includes('photo_source')) db.exec('ALTER TABLE items ADD COLUMN photo_source TEXT');
-const userCols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
-if (!userCols.includes('lang')) db.exec('ALTER TABLE users ADD COLUMN lang TEXT');
+  // Lightweight migrations for databases created by earlier versions.
+  const itemCols = db.prepare('PRAGMA table_info(items)').all().map((c) => c.name);
+  if (!itemCols.includes('photo_credit')) db.exec('ALTER TABLE items ADD COLUMN photo_credit TEXT');
+  if (!itemCols.includes('photo_source')) db.exec('ALTER TABLE items ADD COLUMN photo_source TEXT');
+  const userCols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
+  if (!userCols.includes('lang')) db.exec('ALTER TABLE users ADD COLUMN lang TEXT');
+}
+
+open();
+
+// Swap in a newer copy of the database (used on Netlify when another instance has saved changes).
+function replaceWith(buffer) {
+  conn.close();
+  fs.writeFileSync(DB_PATH, buffer);
+  open();
+}
+
+const snapshot = () => fs.readFileSync(DB_PATH);
+const totalChanges = () => conn.prepare('SELECT total_changes() AS c').get().c;
 
 function tx(fn) {
   db.exec('BEGIN');
@@ -117,4 +162,4 @@ function ensureAdmin() {
   console.log(`[setup] Master admin: ${email}`);
 }
 
-module.exports = { db, tx, ensureAdmin };
+module.exports = { db, tx, ensureAdmin, replaceWith, snapshot, totalChanges, DB_PATH };

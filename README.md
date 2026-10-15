@@ -48,6 +48,34 @@ npm run dev               # http://localhost:3000
 
 Seed and demo items use real photos from [Wikimedia Commons](https://commons.wikimedia.org), stored in `seed/photos/`. They are public domain or Creative Commons licensed, and the author and license of each are recorded in `seed/photos/credits.json` and shown under the photo on the item page. To change the photo set, edit the list in `scripts/fetch-photos.js` and run `node scripts/fetch-photos.js`.
 
+## Deploy to Netlify (free)
+
+The repo is ready for Netlify. Static files (CSS, JS, icons, stock photos) are served from Netlify's CDN, and every page request runs the Express app inside a Netlify Function. There's no separate database service to set up: the SQLite database file and all uploaded photos are stored in **Netlify Blobs**, Netlify's built-in storage, which is free.
+
+1. On [app.netlify.com](https://app.netlify.com), choose **Add new site → Import an existing project → GitHub** and pick `RizveOve/borrowhood`. Netlify reads the build settings from `netlify.toml`, so leave them as they are.
+2. **Before the first deploy**, open **Site configuration → Environment variables** and add:
+   | Variable | Value |
+   |---|---|
+   | `ADMIN_EMAIL` | the master admin's login email |
+   | `ADMIN_PASSWORD` | a strong password for the admin |
+   | `SEED_DEMO` | `0` if you **don't** want the demo neighbourhoods and users (on by default) |
+
+   The admin account is created the first time the site is visited. If you skip `ADMIN_PASSWORD`, a random password is printed once under **Logs → Functions → app**.
+3. Click **Deploy**. The site is live at `https://<your-site-name>.netlify.app`. Every push to `main` redeploys automatically, and the saved data stays.
+
+What runs where on Netlify:
+
+| Part | How |
+|---|---|
+| Pages | `netlify/functions/app.mjs` forwards each request to the Express app (`src/netlify.js`) |
+| Database | SQLite file saved to Netlify Blobs after each change. Every request first checks for a newer copy, and simultaneous saves are retried, so nothing is lost. |
+| Photos | Netlify Blobs (store `photos`) |
+| Reminders | `netlify/functions/reminders.mjs`, a scheduled function that runs every hour |
+| Cookie secret | Generated once and kept in Blobs, unless you set `SESSION_SECRET` |
+| Email | Not sent on Netlify. Reminders appear as in-app notifications, and email text goes to the function logs. |
+
+Limits to know: this setup is meant for a demo or a small community, not heavy traffic. Photos must be under 4 MB, but phones resize them automatically. To test the Netlify setup locally, run `npx netlify-cli dev`.
+
 ## AWS architecture
 
 ```
@@ -81,7 +109,10 @@ Logs: `sudo journalctl -u borrowhood -f`. Health check: `GET /health`.
 
 ```
 src/
-  server.js        app setup, middleware, routes
+  app.js           Express app: middleware, routes, first-run setup
+  server.js        starts the app as a normal server (local / EC2)
+  netlify.js       runs the app inside Netlify Functions, data in Netlify Blobs
+  paths.js         locates the project root (also inside bundled functions)
   db.js            schema, admin + shelf seed
   auth.js          session user, guards, flash messages
   items.js         item visibility / permission helpers
@@ -95,5 +126,7 @@ views/             EJS templates (mobile-first, desktop layout from 900px)
 seed/photos/       stock photos + credits.json
 public/            style.css, app.js (photo resize, share, confirms)
 deploy/            EC2 user data + systemd unit
+netlify/functions/ Netlify entry points (pages + hourly reminders)
+netlify.toml       Netlify build settings
 scripts/          seed-demo.js, fetch-photos.js
 ```
