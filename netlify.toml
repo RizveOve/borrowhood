@@ -9,5 +9,4 @@
   AWS_LAMBDA_JS_RUNTIME = "nodejs22.x"
 
 [functions]
-  node_bundler = "esbuild"
   included_files = ["views/**", "seed/photos/**", "public/style.css", "public/app.js"]

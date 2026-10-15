@@ -1,5 +1,8 @@
 // Sends return reminders and overdue alerts every hour.
-import borrowhood from '../../src/netlify.js';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+const borrowhood = require('../../src/netlify.js');
 
 export default async () => {
   await borrowhood.runScheduledReminders();
