@@ -142,9 +142,18 @@ function tx(fn) {
   }
 }
 
-// Create the single master admin on first start.
+// Create the single master admin on first start. If ADMIN_PASSWORD is set, it is also the admin's
+// current password: changing the variable (e.g. in Netlify) and restarting resets it.
 function ensureAdmin() {
-  if (db.prepare("SELECT 1 FROM users WHERE role = 'admin'").get()) return;
+  const admin = db.prepare("SELECT id, password_hash FROM users WHERE role = 'admin' ORDER BY id LIMIT 1").get();
+  if (admin) {
+    const wanted = process.env.ADMIN_PASSWORD;
+    if (wanted && !bcrypt.compareSync(wanted, admin.password_hash)) {
+      db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(wanted, 10), admin.id);
+      console.log('[setup] Admin password reset from ADMIN_PASSWORD');
+    }
+    return;
+  }
   const email = (process.env.ADMIN_EMAIL || 'admin@borrowhood.no').toLowerCase();
   const name = process.env.ADMIN_NAME || 'BorrowHood Admin';
   let password = process.env.ADMIN_PASSWORD;

@@ -60,7 +60,7 @@ The repo is ready for Netlify. Static files (CSS, JS, icons, stock photos) are s
    | `ADMIN_PASSWORD` | a strong password for the admin |
    | `SEED_DEMO` | `0` if you **don't** want the demo neighbourhoods and users (on by default) |
 
-   The admin account is created the first time the site is visited. If you skip `ADMIN_PASSWORD`, a random password is printed once under **Logs → Functions → app**.
+   The admin account is created the first time the site is visited. `ADMIN_PASSWORD` is always the admin's current password: to change it later, update the variable and redeploy (**Deploys → Trigger deploy**). If you never set it, a random password is printed once under **Logs → Functions → app**.
 3. Click **Deploy**. The site is live at `https://<your-site-name>.netlify.app`. Every push to `main` redeploys automatically, and the saved data stays.
 
 What runs where on Netlify:
