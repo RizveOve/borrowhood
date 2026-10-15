@@ -1,0 +1,87 @@
+<%- include('partials/top') %>
+<a href="/items" class="back">← <%= t('nav.browse') %></a>
+<div class="detail">
+<div class="detail-media">
+  <div class="hero-img"><%- include('partials/thumb', { it: item }) %></div>
+  <% if (item.photo_credit) { %><p class="credit"><%= t('item.photo') %>: <a href="<%= item.photo_source %>" target="_blank" rel="noopener"><%= item.photo_credit %></a>, Wikimedia Commons</p><% } %>
+</div>
+<div class="detail-info">
+<p class="eyebrow"><%= catEmoji(item.category) %> <%= t('cat.' + item.category) %></p>
+<h1 class="mb0"><%= item.title %></h1>
+<p class="muted">📍 <%= item.location %></p>
+
+<div class="owner">
+  <span class="avatar"><%= item.is_org ? '⌂' : item.owner_name[0].toUpperCase() %></span>
+  <div>
+    <% if (item.is_org) { %><strong><%= t('item.shelf_owner') %></strong><span class="muted small"><%= t('item.shelf_note') %></span>
+    <% } else { %><strong><%= item.owner_id === user.id ? t('item.you') : item.owner_name %></strong><span class="muted small"><%= item.owner_flat ? t('item.flat', { flat: item.owner_flat }) + ' · ' : '' %><%= item.hood_name || t('item.no_hood') %></span><% } %>
+  </div>
+</div>
+
+<% if (item.description) { %><p class="desc"><%= item.description %></p><% } %>
+
+<% if (bookings.length) { %>
+  <h2><%= t('item.booked') %></h2>
+  <ul class="booked">
+    <% bookings.forEach(b => { %><li><%= fmtDate(b.start_date) %> – <%= fmtDate(b.end_date) %></li><% }) %>
+  </ul>
+<% } %>
+
+<% if (manage) { %>
+  <% if (requests.length) { %>
+    <h2><%= t('item.requests') %></h2>
+    <ul class="list">
+      <% requests.forEach(l => { const st = loanState(l, today()); %>
+        <li class="row">
+          <div class="grow">
+            <strong><%= l.borrower_name %></strong> <span class="badge badge-<%= st %>"><%= t('state.' + st) %></span>
+            <div class="muted small"><%= fmtDate(l.start_date) %> – <%= fmtDate(l.end_date) %><%= l.borrower_flat ? ' · ' + t('item.flat', { flat: l.borrower_flat }) : '' %></div>
+            <% if (l.message) { %><div class="quote"><%= l.message %></div><% } %>
+          </div>
+          <div class="actions">
+            <% if (l.status === 'pending') { %>
+              <form method="post" action="/loans/<%= l.id %>/approve"><button class="btn btn-primary btn-sm"><%= t('item.approve') %></button></form>
+              <form method="post" action="/loans/<%= l.id %>/decline"><button class="btn btn-sm"><%= t('item.decline') %></button></form>
+            <% } else if (st === 'active' || st === 'overdue') { %>
+              <form method="post" action="/loans/<%= l.id %>/returned"><button class="btn btn-primary btn-sm"><%= t('item.mark_returned') %></button></form>
+            <% } else { %>
+              <form method="post" action="/loans/<%= l.id %>/decline" data-confirm="<%= t('item.cancel_loan_confirm') %>"><button class="btn btn-sm"><%= t('item.cancel') %></button></form>
+            <% } %>
+          </div>
+        </li>
+      <% }) %>
+    </ul>
+  <% } %>
+  <div class="split">
+    <a href="/items/<%= item.id %>/edit" class="btn"><%= t('common.edit') %></a>
+    <form method="post" action="/items/<%= item.id %>/delete" data-confirm="<%= t('item.delete_confirm', { title: item.title }) %>">
+      <button class="btn btn-ghost danger-text btn-block"><%= t('common.delete') %></button>
+    </form>
+  </div>
+<% } %>
+
+<% if (item.owner_id !== user.id) { %>
+  <% if (mine.length) { %>
+    <div class="card card-soft">
+      <% mine.forEach(l => { const st = loanState(l, today()); %>
+        <p class="mb0"><%= t('item.your_request') %> <strong><%= fmtDate(l.start_date) %> – <%= fmtDate(l.end_date) %></strong> <span class="badge badge-<%= st %>"><%= t('state.' + st) %></span></p>
+      <% }) %>
+      <a href="/loans?tab=borrowing" class="small"><%= t('item.see_loans') %></a>
+    </div>
+  <% } %>
+  <form method="post" action="/items/<%= item.id %>/request" class="card form" id="request">
+    <h2><%= t('item.request_title') %></h2>
+    <% if (!item.is_org && item.owner_hood !== user.neighbourhood_id) { %><p class="small muted mb0"><%= t('item.other_hood', { hood: item.hood_name || t('item.another_building') }) %></p><% } %>
+    <% if (error) { %><div class="flash flash-error"><%= t(error, { n: 30 }) %></div><% } %>
+    <div class="split">
+      <label class="field"><span><%= t('item.from') %></span><input type="date" name="start_date" min="<%= today() %>" value="<%= today() %>" required data-start></label>
+      <label class="field"><span><%= t('item.return_by') %></span><input type="date" name="end_date" min="<%= today() %>" required data-end></label>
+    </div>
+    <label class="field"><span><%= t('item.message') %> <em><%= t('common.optional') %></em></span>
+      <textarea name="message" rows="2" maxlength="500" placeholder="<%= t('item.message_ph') %>"></textarea></label>
+    <button class="btn btn-primary btn-block"><%= t('item.send') %></button>
+  </form>
+<% } %>
+</div>
+</div>
+<%- include('partials/bottom') %>

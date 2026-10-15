@@ -1,0 +1,14 @@
+</main>
+<% if (user) { %>
+<nav class="tabbar" aria-label="<%= t('nav.browse') %>">
+  <% navTabs(user, pendingCount, t).forEach(tab => { %>
+    <a href="<%= tab.href %>" class="<%= tab.match(path) ? 'on' : '' %>" <%- tab.match(path) ? 'aria-current="page"' : '' %>>
+      <span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><%- tab.icon %></svg><% if (tab.badge) { %><span class="dot"><%= tab.badge %></span><% } %></span>
+      <%= tab.label %>
+    </a>
+  <% }) %>
+</nav>
+<% } %>
+<script src="<%= asset('app.js') %>" defer></script>
+</body>
+</html>

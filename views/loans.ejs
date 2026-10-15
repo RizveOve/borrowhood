@@ -1,0 +1,55 @@
+<%- include('partials/top') %>
+<h1><%= t('loans.title') %></h1>
+<div class="seg" role="tablist">
+  <a href="/loans?tab=lending" role="tab" aria-selected="<%= tab === 'lending' %>" class="<%= tab === 'lending' ? 'on' : '' %>"><%= t('loans.lending') %><% if (pendingCount) { %> <span class="dot dot-inline"><%= pendingCount %></span><% } %></a>
+  <a href="/loans?tab=borrowing" role="tab" aria-selected="<%= tab === 'borrowing' %>" class="<%= tab === 'borrowing' ? 'on' : '' %>"><%= t('loans.borrowing') %></a>
+</div>
+
+<% const loans = tab === 'lending' ? lending : borrowing; const d0 = today(); %>
+<% if (!loans.length) { %>
+  <div class="empty">
+    <% if (tab === 'lending') { %>
+      <p><%= t('loans.empty_lending') %></p>
+      <a href="/items/new" class="btn btn-primary"><%= t('browse.lend_cta') %></a>
+    <% } else { %>
+      <p><%= t('loans.empty_borrowing') %></p>
+      <a href="/items" class="btn btn-primary"><%= t('loans.browse') %></a>
+    <% } %>
+  </div>
+<% } else { %>
+  <ul class="list">
+    <% loans.forEach(l => { const st = loanState(l, d0); const done = ['declined', 'cancelled', 'returned'].includes(st); %>
+      <li class="loan <%= done ? 'done' : '' %> <%= st === 'overdue' ? 'is-overdue' : '' %>">
+        <a href="/items/<%= l.item_id %>" class="mini"><%- include('partials/thumb', { it: l }) %></a>
+        <div class="grow">
+          <div class="loan-head"><a href="/items/<%= l.item_id %>"><strong><%= l.title %></strong></a> <span class="badge badge-<%= st %>"><%= t('state.' + st) %></span></div>
+          <div class="muted small"><%= fmtDate(l.start_date) %> – <%= fmtDate(l.end_date) %> ·
+            <% if (tab === 'lending') { %><%= l.borrower_name %><%= l.borrower_flat ? ' (' + l.borrower_flat + ')' : '' %>
+            <% } else { %><%= l.is_org ? 'BorrowHood' : l.owner_name %><% } %>
+          </div>
+          <% if (l.message && l.status === 'pending' && tab === 'lending') { %><div class="quote"><%= l.message %></div><% } %>
+          <% if (l.status === 'approved') { %>
+            <div class="small contact">
+              <% if (tab === 'lending') { %>✉️ <a href="mailto:<%= l.borrower_email %>"><%= l.borrower_email %></a>
+              <% } else if (l.is_org) { %>📍 <%= l.location %>
+              <% } else { %>📍 <%= l.location %> · ✉️ <a href="mailto:<%= l.owner_email %>"><%= l.owner_email %></a><% } %>
+            </div>
+          <% } %>
+          <div class="actions">
+            <% if (tab === 'lending') { %>
+              <% if (l.status === 'pending') { %>
+                <form method="post" action="/loans/<%= l.id %>/approve"><button class="btn btn-primary btn-sm"><%= t('item.approve') %></button></form>
+                <form method="post" action="/loans/<%= l.id %>/decline"><button class="btn btn-sm"><%= t('item.decline') %></button></form>
+              <% } else if (st === 'active' || st === 'overdue') { %>
+                <form method="post" action="/loans/<%= l.id %>/returned"><button class="btn btn-primary btn-sm"><%= t('item.mark_returned') %></button></form>
+              <% } %>
+            <% } else if (l.status === 'pending' || st === 'approved') { %>
+              <form method="post" action="/loans/<%= l.id %>/cancel" data-confirm="<%= t('loans.cancel_confirm') %>"><button class="btn btn-sm"><%= t('item.cancel') %></button></form>
+            <% } %>
+          </div>
+        </div>
+      </li>
+    <% }) %>
+  </ul>
+<% } %>
+<%- include('partials/bottom') %>

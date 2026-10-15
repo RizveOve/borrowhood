@@ -1,0 +1,85 @@
+<%- include('partials/top') %>
+<%
+  const hoodLabel = f.hood === 'mine' ? user.hood_name : f.hood === 'shelf' ? t('browse.shelf') : f.hood ? (hoods.find(h => String(h.id) === f.hood) || {}).name : '';
+  const countText = items.length === 1 ? t('browse.count_one') : t('browse.count', { n: items.length });
+%>
+<div class="browse">
+  <form method="get" action="/items" class="filters" data-autosubmit>
+    <div class="search" role="search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input type="search" name="q" value="<%= f.q %>" placeholder="<%= t('browse.search') %>" aria-label="<%= t('browse.search') %>">
+    </div>
+
+    <fieldset class="cats">
+      <legend class="filter-title"><%= t('browse.category') %></legend>
+      <div class="cat-list">
+        <label class="cat"><input type="radio" name="category" value="" <%= !f.category ? 'checked' : '' %>>
+          <span class="cat-emoji" aria-hidden="true">✦</span><span class="cat-name"><%= t('cat.all') %></span><span class="cat-count"><%= catCounts[''] || 0 %></span></label>
+        <% CATEGORIES.forEach(c => { %>
+          <label class="cat"><input type="radio" name="category" value="<%= c.key %>" <%= f.category === c.key ? 'checked' : '' %>>
+            <span class="cat-emoji" aria-hidden="true"><%= c.emoji %></span><span class="cat-name"><%= t('cat.' + c.key) %></span><span class="cat-count"><%= catCounts[c.key] || 0 %></span></label>
+        <% }) %>
+      </div>
+    </fieldset>
+
+    <div class="filter-row">
+      <label class="field"><span class="filter-title"><%= t('browse.hood') %></span>
+        <select name="hood">
+          <option value=""><%= t('browse.all_hoods') %></option>
+          <% if (user.neighbourhood_id) { %><option value="mine" <%= f.hood === 'mine' ? 'selected' : '' %>><%= t('browse.my_hood', { name: user.hood_name }) %></option><% } %>
+          <option value="shelf" <%= f.hood === 'shelf' ? 'selected' : '' %>><%= t('browse.shelf') %></option>
+          <% hoods.filter(h => h.id !== user.neighbourhood_id).forEach(h => { %>
+            <option value="<%= h.id %>" <%= f.hood === String(h.id) ? 'selected' : '' %>><%= h.name %> (<%= h.items %>)</option>
+          <% }) %>
+        </select></label>
+      <label class="field"><span class="filter-title"><%= t('browse.sort') %></span>
+        <select name="sort">
+          <% SORTS.forEach(k => { %><option value="<%= k %>" <%= f.sort === k ? 'selected' : '' %>><%= t('sort.' + k) %></option><% }) %>
+        </select></label>
+      <label class="toggle"><input type="checkbox" name="avail" value="1" <%= f.avail ? 'checked' : '' %>><span><%= t('browse.avail') %></span></label>
+    </div>
+    <div class="filter-actions">
+      <button class="btn btn-primary btn-sm js-hide"><%= t('browse.apply') %></button>
+      <% if (active) { %><a href="/items" class="small"><%= t('browse.clear') %></a><% } %>
+    </div>
+  </form>
+
+  <section class="results">
+    <div class="results-head">
+      <div>
+        <h1 class="desk-h1"><%= hoodLabel || t('browse.title') %></h1>
+        <p class="muted small"><%= countText %><%= f.q ? ' ' + t('browse.matching', { q: f.q }) : '' %></p>
+      </div>
+      <a href="/items/new" class="btn btn-primary btn-sm desk-only">+ <%= t('browse.lend_cta') %></a>
+    </div>
+    <% if (!user.neighbourhood_id && user.role !== 'admin') { %>
+      <a href="/neighbourhood" class="card card-soft row link-card">
+        <div class="grow"><strong><%= t('browse.join_title') %></strong><div class="small muted"><%= t('browse.join_text') %></div></div><span>→</span>
+      </a>
+    <% } %>
+    <% if (!items.length) { %>
+      <div class="empty">
+        <p><%= t('browse.empty') %></p>
+        <p class="muted small"><%= t('browse.empty_text') %></p>
+        <a href="/items/new" class="btn btn-primary"><%= t('browse.lend_cta') %></a>
+      </div>
+    <% } else { %>
+      <ul class="grid">
+        <% items.forEach(it => { const near = !it.is_org && it.owner_hood && it.owner_hood === user.neighbourhood_id; %>
+          <li><a href="/items/<%= it.id %>" class="tile">
+            <div class="thumb"><%- include('partials/thumb', { it }) %>
+              <% if (it.is_org) { %><span class="tag tag-org"><%= t('tag.org') %></span><% } else if (near) { %><span class="tag tag-near"><%= t('tag.near') %></span><% } %>
+            </div>
+            <div class="tile-body">
+              <strong><%= it.title %></strong>
+              <span class="muted small clamp"><%= it.is_org ? t('item.community_room') : (it.hood_name || t('item.no_hood')) %></span>
+              <% if (it.out_until) { %><span class="badge badge-warn"><%= t('item.out_until', { date: fmtDate(it.out_until) }) %></span>
+              <% } else { %><span class="badge badge-ok"><%= t('item.available') %></span><% } %>
+            </div>
+          </a></li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </section>
+</div>
+<%- include('partials/bottom') %>

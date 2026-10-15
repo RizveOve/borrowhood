@@ -1,0 +1,45 @@
+<%- include('partials/top') %>
+<% if (hood) { %>
+  <a href="/me" class="back">← <%= t('nav.me') %></a>
+  <h1><%= hood.name %></h1>
+  <p class="muted"><%= t('kind.' + hood.kind) %><%= hood.city ? ' · ' + hood.city : '' %></p>
+  <div class="stats stats-2">
+    <div class="stat"><b><%= hood.members %></b><span><%= t('hood.members') %></span></div>
+    <div class="stat"><b><%= hood.items %></b><span><%= t('hood.items') %></span></div>
+  </div>
+  <div class="card">
+    <h2><%= t('hood.invite') %></h2>
+    <p class="muted small"><%= t('hood.invite_text') %></p>
+    <div class="code"><%= hood.join_code %></div>
+    <button type="button" class="btn btn-block" data-share="/join/<%= hood.join_code %>" data-share-text="<%= t('hood.share_text', { name: hood.name }) %>" data-copied="<%= t('hood.copied') %>"><%= t('hood.share') %></button>
+  </div>
+  <form method="post" action="/neighbourhood/leave" data-confirm="<%= t('hood.leave_confirm', { name: hood.name }) %>">
+    <button class="btn btn-ghost btn-block danger-text"><%= t('hood.leave') %></button>
+  </form>
+<% } else { %>
+  <h1><%= t('hood.join_title') %></h1>
+  <p class="muted"><%= t('hood.join_text') %></p>
+  <% if (error) { %><div class="flash flash-error"><%= error %></div><% } %>
+  <div class="two-col">
+    <form method="post" action="/neighbourhood/join" class="card form">
+      <h2><%= t('hood.have_code') %></h2>
+      <label class="field"><span><%= t('hood.code') %></span>
+        <input name="code" value="<%= code %>" class="mono upper" placeholder="K7M2QX" maxlength="12" autocapitalize="characters" required></label>
+      <button class="btn btn-primary btn-block"><%= t('hood.join') %></button>
+    </form>
+    <form method="post" action="/neighbourhood/create" class="card form">
+      <h2><%= t('hood.start') %></h2>
+      <label class="field"><span><%= t('hood.name') %></span>
+        <input name="name" placeholder="<%= t('hood.name_ph') %>" maxlength="80" required></label>
+      <label class="field"><span><%= t('hood.type') %></span>
+        <select name="kind">
+          <% Object.keys(HOOD_KINDS).forEach(k => { %><option value="<%= k %>"><%= t('kind.' + k) %></option><% }) %>
+        </select></label>
+      <label class="field"><span><%= t('hood.city') %> <em><%= t('common.optional') %></em></span>
+        <input name="city" placeholder="<%= t('hood.city_ph') %>" maxlength="60"></label>
+      <button class="btn btn-block"><%= t('hood.create') %></button>
+    </form>
+  </div>
+  <% if (user.role === 'admin') { %><p class="center small"><a href="/admin"><%= t('hood.back_admin') %></a></p><% } %>
+<% } %>
+<%- include('partials/bottom') %>

@@ -1,0 +1,15 @@
+<%- include('partials/top') %>
+<h1><%= t('notes.title') %></h1>
+<% if (!notes.length) { %>
+  <div class="empty"><p><%= t('notes.empty') %></p></div>
+<% } else { %>
+  <ul class="list">
+    <% notes.forEach(n => { %>
+      <li><a href="<%= n.link || '#' %>" class="note <%= n.is_read ? '' : 'unread' %>">
+        <span><%= n.body %></span>
+        <span class="muted tiny"><%= fmtDate(n.created_at) %></span>
+      </a></li>
+    <% }) %>
+  </ul>
+<% } %>
+<%- include('partials/bottom') %>

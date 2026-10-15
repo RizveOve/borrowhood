@@ -1,0 +1,24 @@
+<%- include('partials/top') %>
+<div class="landing">
+  <section class="hero">
+    <p class="eyebrow"><%= t('landing.eyebrow') %></p>
+    <h1><%= t('landing.title') %></h1>
+    <p class="lead"><%= t('landing.lead') %></p>
+    <div class="stack cta">
+      <a href="/signup" class="btn btn-primary btn-block"><%= t('landing.cta') %></a>
+      <a href="/login" class="btn btn-block"><%= t('landing.have_account') %></a>
+    </div>
+  </section>
+  <div class="mosaic" aria-hidden="true">
+    <img src="/stock/cordless-drill.jpg" alt=""><img src="/stock/tent.jpg" alt="">
+    <img src="/stock/waffle-iron.jpg" alt=""><img src="/stock/sewing-machine.jpg" alt="">
+  </div>
+</div>
+
+<ol class="steps">
+  <li><strong><%= t('landing.step1') %></strong><span><%= t('landing.step1_text') %></span></li>
+  <li><strong><%= t('landing.step2') %></strong><span><%= t('landing.step2_text') %></span></li>
+  <li><strong><%= t('landing.step3') %></strong><span><%= t('landing.step3_text') %></span></li>
+</ol>
+<p class="muted small center"><%= t('landing.footer') %></p>
+<%- include('partials/bottom') %>

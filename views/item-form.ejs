@@ -1,0 +1,31 @@
+<%- include('partials/top') %>
+<% const editing = !!item.id; %>
+<a href="<%= editing ? '/items/' + item.id : '/items' %>" class="back">← <%= t('common.back') %></a>
+<h1><%= editing ? t('form.edit_title') : t('form.new_title') %></h1>
+<% if (!editing) { %><p class="muted"><%= user.role === 'admin' ? t('form.org_note') : t('form.user_note', { hood: user.hood_name }) %></p><% } %>
+<% if (error) { %><div class="flash flash-error"><%= t(error) %></div><% } %>
+<form method="post" action="<%= editing ? `/items/${item.id}/edit` : '/items' %>" enctype="multipart/form-data" class="form item-form">
+  <label class="photo-pick">
+    <input type="file" name="photo" accept="image/*" data-photo>
+    <span class="photo-preview" data-preview>
+      <% if (item.photo_key) { %><img src="/photos/<%= item.photo_key %>" alt=""><% } else { %>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8a2 2 0 0 1 2-2h2l2-2h6l2 2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="4"/></svg>
+        <span><%= t('form.add_photo') %></span><% } %>
+    </span>
+  </label>
+  <div class="form-fields">
+    <label class="field"><span><%= t('form.title') %></span>
+      <input name="title" value="<%= item.title || '' %>" placeholder="<%= t('form.title_ph') %>" maxlength="80" required></label>
+    <label class="field"><span><%= t('form.category') %></span>
+      <select name="category" required>
+        <option value="" disabled <%= item.category ? '' : 'selected' %>><%= t('form.choose') %></option>
+        <% CATEGORIES.forEach(c => { %><option value="<%= c.key %>" <%= item.category === c.key ? 'selected' : '' %>><%= c.emoji %> <%= t('cat.' + c.key) %></option><% }) %>
+      </select></label>
+    <label class="field"><span><%= t('form.location') %></span>
+      <input name="location" value="<%= item.location || '' %>" placeholder="<%= t('form.location_ph') %>" maxlength="80" required></label>
+    <label class="field"><span><%= t('form.description') %></span>
+      <textarea name="description" rows="4" maxlength="1000" placeholder="<%= t('form.description_ph') %>"><%= item.description || '' %></textarea></label>
+    <button class="btn btn-primary btn-block"><%= editing ? t('form.save') : t('form.list') %></button>
+  </div>
+</form>
+<%- include('partials/bottom') %>

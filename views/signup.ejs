@@ -1,0 +1,19 @@
+<%- include('partials/top') %>
+<div class="narrow">
+<h1><%= t('signup.title') %></h1>
+<p class="muted"><%= t('signup.subtitle') %></p>
+<% if (error) { %><div class="flash flash-error"><%= error %></div><% } %>
+<form method="post" action="/signup" class="form">
+  <input type="hidden" name="code" value="<%= values.code || '' %>">
+  <label class="field"><span><%= t('signup.name') %></span>
+    <input name="name" value="<%= values.name || '' %>" autocomplete="name" required maxlength="60"></label>
+  <label class="field"><span><%= t('signup.email') %></span>
+    <input type="email" name="email" value="<%= values.email || '' %>" autocomplete="email" inputmode="email" required></label>
+  <label class="field"><span><%= t('signup.password') %></span>
+    <input type="password" name="password" autocomplete="new-password" minlength="8" required>
+    <small><%= t('signup.password_hint') %></small></label>
+  <button class="btn btn-primary btn-block"><%= t('auth.signup') %></button>
+</form>
+<p class="center muted"><%= t('signup.have_account') %> <a href="/login"><%= t('auth.login') %></a></p>
+</div>
+<%- include('partials/bottom') %>

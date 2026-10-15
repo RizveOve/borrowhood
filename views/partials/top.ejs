@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="<%= lang === 'nb' ? 'nb' : 'en' %>">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)">
+  <title><%= typeof title !== 'undefined' ? title + ' · BorrowHood' : 'BorrowHood – ' + t('common.tagline') %></title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="<%= asset('style.css') %>">
+</head>
+<body class="<%= user ? 'has-nav' : '' %>">
+<% const tabs = user ? navTabs(user, pendingCount, t) : []; %>
+<header class="top">
+  <div class="top-in">
+    <a href="<%= user ? '/items' : '/' %>" class="logo">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+      borrowhood
+    </a>
+    <% if (user) { %>
+      <nav class="topnav" aria-label="<%= t('nav.browse') %>">
+        <% tabs.forEach(tab => { %>
+          <a href="<%= tab.href %>" class="<%= tab.match(path) ? 'on' : '' %>" <%- tab.match(path) ? 'aria-current="page"' : '' %>><%= tab.label %><% if (tab.badge) { %> <span class="dot dot-inline"><%= tab.badge %></span><% } %></a>
+        <% }) %>
+      </nav>
+    <% } %>
+    <div class="top-right">
+      <div class="lang" role="group" aria-label="<%= t('nav.language') %>">
+        <a href="/lang?l=en&next=<%= encodeURIComponent(url) %>" class="<%= lang === 'en' ? 'on' : '' %>" lang="en" hreflang="en" aria-label="English" <%- lang === 'en' ? 'aria-current="true"' : '' %>>EN</a>
+        <a href="/lang?l=nb&next=<%= encodeURIComponent(url) %>" class="<%= lang === 'nb' ? 'on' : '' %>" lang="nb" hreflang="nb" aria-label="Norsk" <%- lang === 'nb' ? 'aria-current="true"' : '' %>>NO</a>
+      </div>
+      <% if (user) { %>
+        <a href="/notifications" class="icon-btn" aria-label="<%= t('nav.notifications') %><%= unread ? ` (${unread})` : '' %>">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+          <% if (unread) { %><span class="dot"><%= unread > 9 ? '9+' : unread %></span><% } %>
+        </a>
+        <a href="/me" class="avatar avatar-sm desk-only" aria-label="<%= t('nav.profile') %>"><%= user.name[0].toUpperCase() %></a>
+      <% } else { %>
+        <a href="/login" class="link"><%= t('auth.login') %></a>
+        <a href="/signup" class="btn btn-primary btn-sm desk-only"><%= t('auth.signup') %></a>
+      <% } %>
+    </div>
+  </div>
+</header>
+<main class="<%= typeof wide !== 'undefined' && wide ? 'wide' : '' %>">
+<% if (flash) { %><div class="flash flash-<%= flash.type %>" role="status"><%= flash.msg %></div><% } %>

@@ -1,0 +1,101 @@
+const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
+const express = require('express');
+const cookieSession = require('cookie-session');
+const { ensureAdmin } = require('./db');
+const { seedOrgItems, attachSeedPhotos } = require('./seed');
+const { loadUser } = require('./auth');
+const { startJobs } = require('./jobs');
+const util = require('./util');
+
+if (!process.env.SESSION_SECRET && process.env.NODE_ENV === 'production') {
+  console.error('SESSION_SECRET must be set in production');
+  process.exit(1);
+}
+
+ensureAdmin();
+
+const app = express();
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, '..', 'views'));
+app.set('trust proxy', 1);
+app.disable('x-powered-by');
+
+Object.assign(app.locals, {
+  fmtDate: util.fmtDate, catEmoji: util.catEmoji, catLabel: util.catLabel,
+  CATEGORIES: util.CATEGORIES, HOOD_KINDS: util.HOOD_KINDS, STATE_LABEL: util.STATE_LABEL,
+  loanState: util.loanState, today: util.today,
+  navTabs, asset,
+});
+
+// Versioned URLs for CSS/JS so browsers pick up changes immediately (they are cached for a day).
+const assetVersions = {};
+function asset(file) {
+  const full = path.join(__dirname, '..', 'public', file);
+  try {
+    const mtime = fs.statSync(full).mtimeMs;
+    if (!assetVersions[file] || assetVersions[file].mtime !== mtime) {
+      assetVersions[file] = { mtime, v: crypto.createHash('md5').update(fs.readFileSync(full)).digest('hex').slice(0, 8) };
+    }
+    return `/${file}?v=${assetVersions[file].v}`;
+  } catch {
+    return '/' + file;
+  }
+}
+
+// Main navigation, shared by the desktop header and the mobile tab bar.
+function navTabs(user, pendingCount, t) {
+  const tabs = [
+    { href: '/items', label: t('nav.browse'), match: (p) => p === '/items' || /^\/items\/\d+/.test(p), icon: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>' },
+    { href: '/items/new', label: t('nav.lend'), match: (p) => p === '/items/new', icon: '<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/>' },
+    { href: '/loans', label: t('nav.loans'), match: (p) => p.startsWith('/loans'), badge: pendingCount, icon: '<path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/>' },
+    { href: '/me', label: t('nav.me'), match: (p) => p.startsWith('/me') || p.startsWith('/neighbourhood'), icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>' },
+  ];
+  if (user.role === 'admin') tabs.push({ href: '/admin', label: t('nav.admin'), match: (p) => p.startsWith('/admin'), icon: '<path d="M6 20V14M12 20V4M18 20v-9"/>' });
+  return tabs;
+}
+
+app.use((req, res, next) => {
+  res.set({
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'same-origin',
+  });
+  next();
+});
+app.get('/health', (req, res) => res.json({ ok: true }));
+app.use(express.static(path.join(__dirname, '..', 'public'), { maxAge: '1d' }));
+app.use('/stock', express.static(path.join(__dirname, '..', 'seed', 'photos'), { maxAge: '7d' }));
+app.use(express.urlencoded({ extended: false, limit: '50kb' }));
+app.use(cookieSession({
+  name: 'bh',
+  keys: [process.env.SESSION_SECRET || 'dev-only-secret'],
+  maxAge: 30 * 24 * 60 * 60 * 1000,
+  sameSite: 'lax',
+  httpOnly: true,
+  secure: process.env.COOKIE_SECURE === '1',
+}));
+app.use(loadUser);
+
+app.use(require('./routes/auth'));
+app.use(require('./routes/neighbourhood'));
+app.use(require('./routes/items'));
+app.use(require('./routes/loans'));
+app.use(require('./routes/account'));
+app.use('/admin', require('./routes/admin'));
+
+app.use((req, res) => res.status(404).render('error', { title: req.t('err.not_found'), message: req.t('err.not_found_text') }));
+app.use((err, req, res, next) => {
+  console.error(err);
+  const t = req.t || ((k) => k);
+  res.status(500).render('error', { title: t('err.server'), message: t('err.server_text') });
+});
+
+const PORT = Number(process.env.PORT) || 3000;
+(async () => {
+  await seedOrgItems();
+  await attachSeedPhotos();
+  app.listen(PORT, () => console.log(`BorrowHood running on http://localhost:${PORT}`));
+  startJobs();
+})();

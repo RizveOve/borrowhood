@@ -1,0 +1,15 @@
+<%- include('partials/top') %>
+<div class="narrow">
+<h1><%= t('login.title') %></h1>
+<% if (error) { %><div class="flash flash-error"><%= error %></div><% } %>
+<form method="post" action="/login" class="form">
+  <input type="hidden" name="next" value="<%= values.next || '' %>">
+  <label class="field"><span><%= t('signup.email') %></span>
+    <input type="email" name="email" value="<%= values.email || '' %>" autocomplete="email" inputmode="email" required autofocus></label>
+  <label class="field"><span><%= t('signup.password') %></span>
+    <input type="password" name="password" autocomplete="current-password" required></label>
+  <button class="btn btn-primary btn-block"><%= t('auth.login') %></button>
+</form>
+<p class="center muted"><%= t('login.new') %> <a href="/signup"><%= t('login.create') %></a></p>
+</div>
+<%- include('partials/bottom') %>

@@ -1,0 +1,117 @@
+<%- include('partials/top') %>
+<div class="row page-head">
+  <h1 class="grow"><%= t('admin.title') %></h1>
+  <a href="/items/new" class="btn btn-sm"><%= t('admin.add_shelf') %></a>
+</div>
+
+<div class="stats stats-4">
+  <div class="stat"><b><%= stats.users %></b><span><%= t('admin.users') %></span></div>
+  <div class="stat"><b><%= stats.hoods %></b><span><%= t('admin.hoods') %></span></div>
+  <div class="stat"><b><%= stats.items %></b><span><%= t('admin.items') %></span></div>
+  <div class="stat"><b><%= stats.returned %></b><span><%= t('admin.completed') %></span></div>
+  <div class="stat"><b><%= stats.pending %></b><span><%= t('admin.pending') %></span></div>
+  <div class="stat"><b><%= stats.active %></b><span><%= t('admin.active') %></span></div>
+  <div class="stat <%= stats.overdue ? 'stat-alert' : '' %>"><b><%= stats.overdue %></b><span><%= t('admin.overdue') %></span></div>
+  <div class="stat"><b><%= stats.org_items %></b><span><%= t('admin.shelf_items') %></span></div>
+</div>
+
+<% const loanRow = (l, actions) => { const st = loanState(l, todayIso); %>
+  <li class="row">
+    <div class="grow">
+      <a href="/items/<%= l.item_id %>"><strong><%= l.title %></strong></a> <span class="badge badge-<%= st %>"><%= t('state.' + st) %></span>
+      <div class="muted small"><%= l.borrower_name %> ← <%= l.is_org ? 'BorrowHood' : l.owner_name %> · <%= fmtDate(l.start_date) %>–<%= fmtDate(l.end_date) %></div>
+    </div>
+    <% if (actions && l.status === 'pending') { %>
+      <div class="actions">
+        <form method="post" action="/loans/<%= l.id %>/approve"><button class="btn btn-primary btn-sm"><%= t('item.approve') %></button></form>
+        <form method="post" action="/loans/<%= l.id %>/decline"><button class="btn btn-sm"><%= t('item.decline') %></button></form>
+      </div>
+    <% } else if (actions && l.status === 'approved') { %>
+      <div class="actions"><form method="post" action="/loans/<%= l.id %>/returned"><button class="btn btn-sm"><%= t('loans.returned') %></button></form></div>
+    <% } %>
+  </li>
+<% } %>
+
+<div class="admin-grid">
+  <div>
+    <% if (orgPending.length) { %>
+      <section class="card">
+        <h2><%= t('admin.shelf_requests') %></h2>
+        <ul class="list"><% orgPending.forEach(l => loanRow(l, true)) %></ul>
+      </section>
+    <% } %>
+    <% if (overdue.length) { %>
+      <section class="card">
+        <h2 class="danger-text"><%= t('admin.overdue_title') %></h2>
+        <ul class="list"><% overdue.forEach(l => loanRow(l, true)) %></ul>
+      </section>
+    <% } %>
+    <form method="post" action="/admin/reminders" class="card row">
+      <div class="grow"><strong><%= t('admin.job') %></strong><div class="muted small"><%= t('admin.job_text') %></div></div>
+      <button class="btn btn-sm"><%= t('admin.run') %></button>
+    </form>
+  </div>
+  <details class="card" id="loans" open>
+    <summary><h2><%= t('admin.recent') %></h2></summary>
+    <ul class="list"><% loans.forEach(l => loanRow(l, false)) %></ul>
+    <% if (!loans.length) { %><p class="muted"><%= t('admin.no_loans') %></p><% } %>
+  </details>
+</div>
+
+<details class="card" id="hoods" open>
+  <summary><h2><%= t('admin.hoods_title') %> (<%= hoods.length %>)</h2></summary>
+  <div class="table-wrap"><table>
+    <thead><tr><th><%= t('admin.name') %></th><th><%= t('admin.code') %></th><th><%= t('admin.members') %></th><th><%= t('admin.items_col') %></th><th></th></tr></thead>
+    <tbody>
+      <% hoods.forEach(n => { %>
+        <tr>
+          <td><strong><%= n.name %></strong><div class="muted tiny"><%= t('kind.' + n.kind) %><%= n.city ? ' · ' + n.city : '' %></div></td>
+          <td class="mono"><%= n.join_code %></td><td><%= n.members %></td><td><%= n.items %></td>
+          <td class="actions">
+            <form method="post" action="/admin/neighbourhoods/<%= n.id %>/code" data-confirm="<%= t('admin.new_code_confirm') %>"><button class="btn btn-sm"><%= t('admin.new_code') %></button></form>
+            <form method="post" action="/admin/neighbourhoods/<%= n.id %>/delete" data-confirm="<%= t('admin.delete_hood_confirm', { name: n.name }) %>"><button class="btn btn-sm danger-text"><%= t('common.delete') %></button></form>
+          </td>
+        </tr>
+      <% }) %>
+      <% if (!hoods.length) { %><tr><td colspan="5" class="muted"><%= t('admin.none_hoods') %></td></tr><% } %>
+    </tbody>
+  </table></div>
+</details>
+
+<details class="card" id="users">
+  <summary><h2><%= t('admin.users_title') %> (<%= users.length %>)</h2></summary>
+  <div class="table-wrap"><table>
+    <thead><tr><th><%= t('admin.user') %></th><th><%= t('browse.hood') %></th><th><%= t('admin.items_col') %></th><th><%= t('admin.joined') %></th><th></th></tr></thead>
+    <tbody>
+      <% users.forEach(u => { %>
+        <tr>
+          <td><strong><%= u.name %></strong><%= u.role === 'admin' ? ' ' + t('admin.admin_tag') : '' %><div class="muted tiny"><%= u.email %></div></td>
+          <td><%= u.hood_name || '–' %></td><td><%= u.items %></td><td class="nowrap"><%= fmtDate(u.created_at) %></td>
+          <td><% if (u.role !== 'admin') { %>
+            <form method="post" action="/admin/users/<%= u.id %>/delete" data-confirm="<%= t('admin.delete_user_confirm', { email: u.email }) %>"><button class="btn btn-sm danger-text"><%= t('common.delete') %></button></form>
+          <% } %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table></div>
+</details>
+
+<details class="card" id="items">
+  <summary><h2><%= t('admin.items_title') %> (<%= items.length %>)</h2></summary>
+  <div class="table-wrap"><table>
+    <thead><tr><th><%= t('admin.item') %></th><th><%= t('admin.owner') %></th><th></th></tr></thead>
+    <tbody>
+      <% items.forEach(i => { %>
+        <tr>
+          <td><a href="/items/<%= i.id %>"><%= catEmoji(i.category) %> <%= i.title %></a></td>
+          <td><%= i.is_org ? t('browse.shelf') : i.owner_name %><div class="muted tiny"><%= i.is_org ? t('browse.all_hoods') : (i.hood_name || t('item.no_hood')) %></div></td>
+          <td class="actions">
+            <a href="/items/<%= i.id %>/edit" class="btn btn-sm"><%= t('common.edit') %></a>
+            <form method="post" action="/items/<%= i.id %>/delete" data-confirm="<%= t('admin.delete_item_confirm', { title: i.title }) %>"><button class="btn btn-sm danger-text"><%= t('common.delete') %></button></form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table></div>
+</details>
+<%- include('partials/bottom') %>

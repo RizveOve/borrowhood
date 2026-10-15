@@ -1,0 +1,9 @@
+{
+  "name": "BorrowHood",
+  "short_name": "BorrowHood",
+  "start_url": "/items",
+  "display": "standalone",
+  "background_color": "#f6f5f1",
+  "theme_color": "#2f6f4f",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

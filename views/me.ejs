@@ -1,0 +1,51 @@
+<%- include('partials/top') %>
+<div class="owner big">
+  <span class="avatar"><%= user.name[0].toUpperCase() %></span>
+  <div><h1 class="mb0"><%= user.name %></h1><span class="muted small"><%= user.email %><%= user.role === 'admin' ? ' · ' + t('me.admin') : '' %></span></div>
+</div>
+
+<div class="stats">
+  <div class="stat"><b><%= items.length %></b><span><%= t('me.listed') %></span></div>
+  <div class="stat"><b><%= stats.lent %></b><span><%= t('me.times_lent') %></span></div>
+  <div class="stat"><b><%= stats.borrowed %></b><span><%= t('me.borrowed') %></span></div>
+</div>
+
+<a href="/neighbourhood" class="card row link-card">
+  <div class="grow"><span class="muted small"><%= t('me.hood') %></span><br><strong><%= user.hood_name || t('me.not_joined') %></strong></div>
+  <span class="muted"><%= user.hood_code ? t('me.invite') : t('me.join') %></span>
+</a>
+
+<h2><%= t('me.items') %></h2>
+<% if (!items.length) { %>
+  <p class="muted"><%= t('me.no_items') %> <a href="/items/new"><%= t('browse.lend_cta') %></a></p>
+<% } else { %>
+  <ul class="list">
+    <% items.forEach(it => { %>
+      <li><a href="/items/<%= it.id %>" class="row link-row">
+        <span class="mini"><%- include('partials/thumb', { it }) %></span>
+        <div class="grow"><strong><%= it.title %></strong><div class="muted small"><%= it.times_lent === 1 ? t('me.loans_done_one') : t('me.loans_done', { n: it.times_lent }) %></div></div>
+        <span class="muted">›</span>
+      </a></li>
+    <% }) %>
+  </ul>
+<% } %>
+
+<details class="card">
+  <summary><h2><%= t('me.profile') %></h2></summary>
+  <form method="post" action="/me" class="form">
+    <label class="field"><span><%= t('me.name') %></span><input name="name" value="<%= user.name %>" maxlength="60" required></label>
+    <label class="field"><span><%= t('me.flat') %> <em><%= t('me.flat_hint') %></em></span><input name="flat" value="<%= user.flat || '' %>" maxlength="30" placeholder="H0204"></label>
+    <button class="btn btn-block"><%= t('common.save') %></button>
+  </form>
+</details>
+<details class="card">
+  <summary><h2><%= t('me.change_pw') %></h2></summary>
+  <form method="post" action="/me/password" class="form">
+    <label class="field"><span><%= t('me.current_pw') %></span><input type="password" name="current" autocomplete="current-password" required></label>
+    <label class="field"><span><%= t('me.new_pw') %></span><input type="password" name="password" minlength="8" autocomplete="new-password" required></label>
+    <button class="btn btn-block"><%= t('me.change_pw') %></button>
+  </form>
+</details>
+
+<form method="post" action="/logout"><button class="btn btn-ghost btn-block"><%= t('auth.logout') %></button></form>
+<%- include('partials/bottom') %>
