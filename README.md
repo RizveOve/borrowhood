@@ -40,7 +40,7 @@ npm run dev               # http://localhost:3000
 ```
 
 - **Admin:** `ADMIN_EMAIL` / `ADMIN_PASSWORD` from `.env`, which default to `admin@borrowhood.no` / `change-me-please`. If no password is set, a random one is printed to the console on first start.
-- **Demo users** (password `password123` for all):
+- **Demo users** (password `password123` for all; full table in [CREDENTIALS.md](CREDENTIALS.md)):
   - Solsiden Borettslag, join code `DEMO42`: `kari@example.com`, `ola@example.com`, `amira@example.com`
   - Moholt Studentby, join code `MOHO24`: `jonas@example.com`, `lin@example.com`
 
