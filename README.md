@@ -15,7 +15,7 @@ AWS re/Start Portfolio Project.
 - Request an item for a date range. The owner approves or declines it, and the app blocks double bookings.
 - Get a reminder the day before the return date and an overdue alert to both sides, in the app and by email.
 - The owner marks the item as returned.
-- **About & contact page** (`/about`): who we are, a short FAQ and a contact form for questions, problems and reports. Item pages have a "Report this item" link, and messages land in the admin dashboard to reply to and resolve.
+- **About & contact page** (`/about`): who we are, a short FAQ and a contact form for questions, problems and reports. It's linked from the main menu, item pages have a "Report this item" link, and each message notifies the admin and lands in the dashboard to reply to and resolve.
 - **English / Norwegian (bokmål):** the EN/NO toggle in the header switches the whole app. Logged-in users keep their choice, and their notifications and emails are written in it. Visitors get Norwegian automatically if their browser asks for it. Strings live in `src/i18n.js`.
 - **Master admin:** a dashboard with stats, overdue loans, every neighbourhood, user, item and loan. The admin can delete users, items and neighbourhoods, rotate join codes and run the reminder job on demand.
 - **Organisation items (the BorrowHood shelf):** items owned by BorrowHood itself, visible to every neighbourhood, with requests approved by the admin. Six are seeded on first start.

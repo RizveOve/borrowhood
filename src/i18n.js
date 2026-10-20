@@ -1,6 +1,6 @@
 // English / Norwegian (bokmål) strings. Use t('key', { var }) in views and req.t() in routes.
 const en = {
-  'nav.browse': 'Browse', 'nav.lend': 'Lend', 'nav.loans': 'Loans', 'nav.me': 'Me', 'nav.admin': 'Admin',
+  'nav.browse': 'Browse', 'nav.lend': 'Lend', 'nav.loans': 'Loans', 'nav.me': 'Me', 'nav.admin': 'Admin', 'nav.about': 'About',
   'nav.notifications': 'Notifications', 'nav.profile': 'Your profile', 'nav.language': 'Language',
   'auth.login': 'Log in', 'auth.signup': 'Sign up', 'auth.logout': 'Log out',
   'common.back': 'Back', 'common.save': 'Save', 'common.edit': 'Edit', 'common.delete': 'Delete',
@@ -146,7 +146,7 @@ const en = {
   'contact.sent': "Thanks! Your message has been sent. We'll reply by email.",
   'contact.err_short': 'Please write a little more (at least 10 characters).',
   'contact.err_limit': 'You have sent several messages in the last hour. Please wait a bit before sending another.',
-  'contact.n_new': 'New message from {name}: {topic}.', 'contact.mail_new': 'New contact message: {topic}',
+  'contact.n_new': 'New message from {name} ({topic}): “{preview}”', 'contact.mail_new': 'New contact message: {topic}',
   'topic.question': 'A question', 'topic.problem': "Something isn't working", 'topic.report': 'Report an item or a user', 'topic.feedback': 'Feedback or an idea',
   'footer.about': 'About & contact', 'footer.report': 'Report a problem', 'footer.tagline': 'Neighbours lending to neighbours.',
   'item.report': 'Report this item',
@@ -158,7 +158,7 @@ const en = {
 };
 
 const nb = {
-  'nav.browse': 'Utforsk', 'nav.lend': 'Lån ut', 'nav.loans': 'Lån', 'nav.me': 'Profil', 'nav.admin': 'Admin',
+  'nav.browse': 'Utforsk', 'nav.lend': 'Lån ut', 'nav.loans': 'Lån', 'nav.me': 'Profil', 'nav.admin': 'Admin', 'nav.about': 'Om oss',
   'nav.notifications': 'Varsler', 'nav.profile': 'Din profil', 'nav.language': 'Språk',
   'auth.login': 'Logg inn', 'auth.signup': 'Registrer deg', 'auth.logout': 'Logg ut',
   'common.back': 'Tilbake', 'common.save': 'Lagre', 'common.edit': 'Rediger', 'common.delete': 'Slett',
@@ -304,7 +304,7 @@ const nb = {
   'contact.sent': 'Takk! Meldingen er sendt. Vi svarer deg på e-post.',
   'contact.err_short': 'Skriv litt mer (minst 10 tegn).',
   'contact.err_limit': 'Du har sendt flere meldinger den siste timen. Vent litt før du sender en ny.',
-  'contact.n_new': 'Ny melding fra {name}: {topic}.', 'contact.mail_new': 'Ny kontaktmelding: {topic}',
+  'contact.n_new': 'Ny melding fra {name} ({topic}): «{preview}»', 'contact.mail_new': 'Ny kontaktmelding: {topic}',
   'topic.question': 'Et spørsmål', 'topic.problem': 'Noe fungerer ikke', 'topic.report': 'Rapporter en ting eller en bruker', 'topic.feedback': 'Tilbakemelding eller en idé',
   'footer.about': 'Om oss og kontakt', 'footer.report': 'Rapporter et problem', 'footer.tagline': 'Naboer som låner ut til naboer.',
   'item.report': 'Rapporter denne tingen',

@@ -55,8 +55,10 @@ router.post('/contact', (req, res) => {
   const r = db.prepare('INSERT INTO contact_messages (user_id, name, email, topic, message, item_id) VALUES (?, ?, ?, ?, ?, ?)')
     .run(req.user ? req.user.id : null, v.name, v.email, v.topic, v.message, item ? item.id : null);
 
+  // Every admin gets an in-app notification (and an email when SES is set up) with a preview.
+  const preview = v.message.length > 140 ? v.message.slice(0, 140).trimEnd() + '…' : v.message;
   for (const admin of db.prepare("SELECT id FROM users WHERE role = 'admin'").all()) {
-    notify(admin.id, (x) => x.t('contact.n_new', { name: v.name, topic: x.t('topic.' + v.topic) }), `/admin#msg-${r.lastInsertRowid}`,
+    notify(admin.id, (x) => x.t('contact.n_new', { name: v.name, topic: x.t('topic.' + v.topic), preview }), `/admin#msg-${r.lastInsertRowid}`,
       { email: true, subject: (x) => x.t('contact.mail_new', { topic: x.t('topic.' + v.topic) }) });
   }
   flash(req, 'ok', req.t('contact.sent'));
