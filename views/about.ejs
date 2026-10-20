@@ -1,0 +1,64 @@
+<%- include('partials/top') %>
+<div class="about">
+  <section class="about-intro">
+    <p class="eyebrow"><%= t('about.eyebrow') %></p>
+    <h1><%= t('about.heading') %></h1>
+    <p class="lead"><%= t('about.lead') %></p>
+
+    <h2><%= t('about.story_title') %></h2>
+    <p><%= t('about.story') %></p>
+    <p class="muted"><%= t('about.story2') %></p>
+
+    <ul class="values">
+      <li><span class="value-icon" aria-hidden="true">🤝</span><div><strong><%= t('about.v1') %></strong><span><%= t('about.v1_text') %></span></div></li>
+      <li><span class="value-icon" aria-hidden="true">♻️</span><div><strong><%= t('about.v2') %></strong><span><%= t('about.v2_text') %></span></div></li>
+      <li><span class="value-icon" aria-hidden="true">🏠</span><div><strong><%= t('about.v3') %></strong><span><%= t('about.v3_text') %></span></div></li>
+    </ul>
+
+    <h2><%= t('about.faq') %></h2>
+    <div class="faq">
+      <% [1, 2, 3, 4].forEach(n => { %>
+        <details class="card">
+          <summary><strong><%= t('about.q' + n) %></strong></summary>
+          <p class="mb0"><%= t('about.a' + n) %></p>
+        </details>
+      <% }) %>
+    </div>
+  </section>
+
+  <section class="about-contact" id="contact">
+    <form method="post" action="/contact" class="card form contact-form">
+      <h2><%= t('contact.title') %></h2>
+      <p class="muted small mb0"><%= t('contact.text') %></p>
+      <% if (error) { %><div class="flash flash-error"><%= error %></div><% } %>
+
+      <fieldset class="topics">
+        <legend class="field-label"><%= t('contact.topic') %></legend>
+        <% TOPICS.forEach(k => { %>
+          <label class="topic"><input type="radio" name="topic" value="<%= k %>" <%= values.topic === k ? 'checked' : '' %>><span><%= t('topic.' + k) %></span></label>
+        <% }) %>
+      </fieldset>
+
+      <% if (item) { %>
+        <input type="hidden" name="item_id" value="<%= item.id %>">
+        <p class="card-soft about-item small"><%= t('contact.about_item', { title: item.title }) %> · <a href="/items/<%= item.id %>">#<%= item.id %></a></p>
+      <% } %>
+
+      <div class="split">
+        <label class="field"><span><%= t('signup.name') %></span>
+          <input name="name" value="<%= values.name %>" autocomplete="name" maxlength="60" required></label>
+        <label class="field"><span><%= t('signup.email') %></span>
+          <input type="email" name="email" value="<%= values.email %>" autocomplete="email" inputmode="email" required></label>
+      </div>
+      <label class="field"><span><%= t('contact.message') %></span>
+        <textarea name="message" rows="6" minlength="10" maxlength="2000" required placeholder="<%= t('contact.message_ph') %>"><%= values.message %></textarea></label>
+
+      <!-- Spam trap: hidden from people, filled in by bots. -->
+      <label class="trap" aria-hidden="true">Website <input name="website" tabindex="-1" autocomplete="off"></label>
+
+      <button class="btn btn-primary btn-block"><%= t('contact.send') %></button>
+      <p class="tiny muted center mb0"><%= t('contact.privacy') %></p>
+    </form>
+  </section>
+</div>
+<%- include('partials/bottom') %>

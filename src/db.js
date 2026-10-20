@@ -103,7 +103,22 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Messages sent through the About & contact page; handled by the admin.
+CREATE TABLE IF NOT EXISTS contact_messages (
+  id          INTEGER PRIMARY KEY,
+  user_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  name        TEXT NOT NULL,
+  email       TEXT NOT NULL,
+  topic       TEXT NOT NULL CHECK (topic IN ('question', 'problem', 'report', 'feedback')),
+  message     TEXT NOT NULL,
+  item_id     INTEGER REFERENCES items(id) ON DELETE SET NULL,
+  status      TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved')),
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  resolved_at TEXT
+);
+
 CREATE INDEX IF NOT EXISTS idx_users_hood ON users(neighbourhood_id);
+CREATE INDEX IF NOT EXISTS idx_contact_status ON contact_messages(status, created_at);
 CREATE INDEX IF NOT EXISTS idx_items_owner ON items(owner_id);
 CREATE INDEX IF NOT EXISTS idx_loans_item ON loans(item_id, status);
 CREATE INDEX IF NOT EXISTS idx_loans_borrower ON loans(borrower_id);

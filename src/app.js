@@ -78,6 +78,7 @@ app.use(require('./routes/neighbourhood'));
 app.use(require('./routes/items'));
 app.use(require('./routes/loans'));
 app.use(require('./routes/account'));
+app.use(require('./routes/contact'));
 app.use('/admin', require('./routes/admin'));
 
 app.use((req, res) => res.status(404).render('error', { title: req.t('err.not_found'), message: req.t('err.not_found_text') }));

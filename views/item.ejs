@@ -82,6 +82,9 @@
     <button class="btn btn-primary btn-block"><%= t('item.send') %></button>
   </form>
 <% } %>
+<% if (item.owner_id !== user.id) { %>
+  <p class="report-link small"><a href="/about?topic=report&item=<%= item.id %>#contact">⚑ <%= t('item.report') %></a></p>
+<% } %>
 </div>
 </div>
 <%- include('partials/bottom') %>

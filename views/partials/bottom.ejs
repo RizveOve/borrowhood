@@ -1,4 +1,13 @@
 </main>
+<footer class="site-foot">
+  <div class="site-foot-in">
+    <span class="muted">© BorrowHood · <%= t('footer.tagline') %></span>
+    <nav aria-label="<%= t('footer.about') %>">
+      <a href="/about"><%= t('footer.about') %></a>
+      <a href="/about?topic=problem#contact"><%= t('footer.report') %></a>
+    </nav>
+  </div>
+</footer>
 <% if (user) { %>
 <nav class="tabbar" aria-label="<%= t('nav.browse') %>">
   <% navTabs(user, pendingCount, t).forEach(tab => { %>
