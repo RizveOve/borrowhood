@@ -34,6 +34,28 @@
 
 <div class="admin-grid">
   <div>
+    <section class="card" id="messages">
+      <div class="row"><h2 class="grow"><%= t('admin.messages') %></h2>
+        <% const openCount = messages.filter(m => m.status === 'open').length; if (openCount) { %><span class="badge badge-pending"><%= t('admin.open_count', { n: openCount }) %></span><% } %></div>
+      <% if (!messages.length) { %><p class="muted mb0"><%= t('admin.no_messages') %></p><% } %>
+      <ul class="list msgs">
+        <% messages.forEach(m => { %>
+          <li class="msg <%= m.status === 'resolved' ? 'done' : '' %>" id="msg-<%= m.id %>">
+            <div class="row">
+              <div class="grow">
+                <strong><%= t('topic.' + m.topic) %></strong> <span class="badge <%= m.status === 'open' ? 'badge-pending' : '' %>"><%= t('status.' + m.status) %></span>
+                <div class="muted small"><%= m.name %> · <%= m.email %> · <%= fmtDate(m.created_at) %><% if (m.item_id) { %> · <a href="/items/<%= m.item_id %>"><%= m.item_title || '#' + m.item_id %></a><% } %></div>
+              </div>
+            </div>
+            <p class="msg-body"><%= m.message %></p>
+            <div class="actions">
+              <a class="btn btn-sm" href="mailto:<%= m.email %>?subject=<%= encodeURIComponent('Re: BorrowHood – ' + t('topic.' + m.topic)) %>"><%= t('admin.reply') %></a>
+              <form method="post" action="/admin/messages/<%= m.id %>/<%= m.status === 'open' ? 'resolve' : 'reopen' %>"><button class="btn btn-sm <%= m.status === 'open' ? 'btn-primary' : '' %>"><%= m.status === 'open' ? t('admin.resolve') : t('admin.reopen') %></button></form>
+            </div>
+          </li>
+        <% }) %>
+      </ul>
+    </section>
     <% if (orgPending.length) { %>
       <section class="card">
         <h2><%= t('admin.shelf_requests') %></h2>

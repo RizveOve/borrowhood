@@ -35,7 +35,11 @@ router.get('/', (req, res) => {
     FROM items i JOIN users u ON u.id = i.owner_id LEFT JOIN neighbourhoods n ON n.id = u.neighbourhood_id
     ORDER BY i.is_org DESC, i.created_at DESC`).all();
 
-  res.render('admin', { title: req.t('nav.admin'), stats, overdue, orgPending, loans, hoods, users, items, todayIso: t, wide: true });
+  const messages = db.prepare(`SELECT m.*, i.title AS item_title FROM contact_messages m
+    LEFT JOIN items i ON i.id = m.item_id
+    ORDER BY m.status = 'resolved', m.created_at DESC LIMIT 50`).all();
+
+  res.render('admin', { title: req.t('nav.admin'), stats, overdue, orgPending, loans, hoods, users, items, messages, todayIso: t, wide: true });
 });
 
 router.post('/users/:id/delete', (req, res) => {
@@ -65,6 +69,16 @@ router.post('/neighbourhoods/:id/code', (req, res) => {
   db.prepare('UPDATE neighbourhoods SET join_code = ? WHERE id = ?').run(code, Number(req.params.id));
   flash(req, 'ok', req.t('flash.new_code', { code }));
   res.redirect('/admin#hoods');
+});
+
+router.post('/messages/:id/resolve', (req, res) => {
+  db.prepare("UPDATE contact_messages SET status = 'resolved', resolved_at = datetime('now') WHERE id = ?").run(Number(req.params.id));
+  res.redirect('/admin#messages');
+});
+
+router.post('/messages/:id/reopen', (req, res) => {
+  db.prepare("UPDATE contact_messages SET status = 'open', resolved_at = NULL WHERE id = ?").run(Number(req.params.id));
+  res.redirect('/admin#messages');
 });
 
 router.post('/reminders', (req, res) => {

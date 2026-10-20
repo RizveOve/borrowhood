@@ -20,6 +20,28 @@
 
 <% if (item.description) { %><p class="desc"><%= item.description %></p><% } %>
 
+<% const ownerName = item.is_org ? 'BorrowHood' : item.owner_name; %>
+<% if (item.owner_id !== user.id) { %>
+  <% if (myConversation) { %>
+    <a href="/messages/<%= myConversation.id %>" class="card row link-card ask-continue">💬 <span class="grow"><%= t('msg.continue', { name: ownerName }) %></span></a>
+  <% } else { %>
+    <details class="card ask" id="ask" <%= flash && flash.type === 'error' ? 'open' : '' %>>
+      <summary><strong>💬 <%= t('msg.ask_title', { name: ownerName }) %></strong></summary>
+      <form method="post" action="/items/<%= item.id %>/ask" class="form mb0">
+        <textarea name="body" rows="3" maxlength="2000" required placeholder="<%= t('msg.ask_ph') %>" aria-label="<%= t('msg.ask_title', { name: ownerName }) %>"></textarea>
+        <button class="btn btn-block"><%= t('msg.ask_send') %></button>
+      </form>
+    </details>
+  <% } %>
+<% } else if (conversations.length) { %>
+  <h2><%= t('msg.owner_convs') %></h2>
+  <ul class="chips-list">
+    <% conversations.forEach(c => { %>
+      <li><a href="/messages/<%= c.id %>" class="chip-link">💬 <%= c.asker_name %><% if (c.unread) { %> <span class="dot dot-inline"><%= c.unread %></span><% } %></a></li>
+    <% }) %>
+  </ul>
+<% } %>
+
 <% if (bookings.length) { %>
   <h2><%= t('item.booked') %></h2>
   <ul class="booked">
@@ -81,6 +103,9 @@
       <textarea name="message" rows="2" maxlength="500" placeholder="<%= t('item.message_ph') %>"></textarea></label>
     <button class="btn btn-primary btn-block"><%= t('item.send') %></button>
   </form>
+<% } %>
+<% if (item.owner_id !== user.id) { %>
+  <p class="report-link small"><a href="/about?topic=report&item=<%= item.id %>#contact">⚑ <%= t('item.report') %></a></p>
 <% } %>
 </div>
 </div>

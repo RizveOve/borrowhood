@@ -120,7 +120,17 @@ router.get('/items/:id', requireAuth, (req, res) => {
         JOIN users b ON b.id = l.borrower_id
         WHERE l.item_id = ? AND l.status IN ('pending', 'approved') ORDER BY l.status DESC, l.start_date`).all(item.id)
     : [];
-  res.render('item', { title: item.title, item, manage, bookings, mine, requests, error: /^err\.\w+$/.test(req.query.error || '') ? req.query.error : null, wide: true });
+  // Messaging: my own conversation with the owner, or (for the owner) everyone who asked.
+  const myConversation = item.owner_id === req.user.id ? null
+    : db.prepare(`SELECT c.id FROM conversations c WHERE c.item_id = ? AND c.asker_id = ?
+        AND EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id)`).get(item.id, req.user.id);
+  const conversations = item.owner_id !== req.user.id ? []
+    : db.prepare(`SELECT c.id, a.name AS asker_name,
+        (SELECT COUNT(*) FROM messages m WHERE m.conversation_id = c.id AND m.sender_id <> ? AND m.read_at IS NULL) AS unread
+      FROM conversations c JOIN users a ON a.id = c.asker_id
+      WHERE c.item_id = ? AND EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id)
+      ORDER BY c.updated_at DESC`).all(req.user.id, item.id);
+  res.render('item', { title: item.title, item, manage, bookings, mine, requests, myConversation, conversations, error: /^err\.\w+$/.test(req.query.error || '') ? req.query.error : null, wide: true });
 });
 
 router.get('/items/:id/edit', requireAuth, (req, res) => {

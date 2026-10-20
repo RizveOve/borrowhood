@@ -46,6 +46,9 @@
             <% } else if (l.status === 'pending' || st === 'approved') { %>
               <form method="post" action="/loans/<%= l.id %>/cancel" data-confirm="<%= t('loans.cancel_confirm') %>"><button class="btn btn-sm"><%= t('item.cancel') %></button></form>
             <% } %>
+            <% if (!done) { %>
+              <a class="btn btn-sm" href="/messages/with/<%= l.item_id %>/<%= tab === 'lending' ? l.borrower_id : l.owner_id %>">💬 <%= t('msg.message_btn') %></a>
+            <% } %>
           </div>
         </div>
       </li>

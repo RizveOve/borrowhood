@@ -28,12 +28,13 @@ const recipient = db.prepare('SELECT email, lang FROM users WHERE id = ?');
 
 // In-app notification (optionally also emailed), written in the recipient's language.
 // `body` and `subject` are functions ({ t, d }) => string, where d formats a date.
-function notify(userId, body, link = null, { email = false, subject = null } = {}) {
+// inApp: false skips the bell notification (e.g. chat messages, which have their own unread badge).
+function notify(userId, body, link = null, { email = false, subject = null, inApp = true } = {}) {
   const u = recipient.get(userId);
   if (!u) return;
   const ctx = { t: translator(u.lang), d: (iso) => fmtDate(iso, u.lang) };
   const text = body(ctx);
-  insert.run(userId, text, link);
+  if (inApp) insert.run(userId, text, link);
   if (email) sendMail(u.email, subject ? subject(ctx) : 'BorrowHood', `${text}\n\n${APP_URL}${link || '/'}\n\n– BorrowHood`);
 }
 
