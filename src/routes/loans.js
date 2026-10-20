@@ -3,9 +3,18 @@ const { db, tx } = require('../db');
 const { requireAuth, flash, isAdmin } = require('../auth');
 const { getItem, canManage } = require('../items');
 const { notify, managersOf } = require('../notify');
-const { today, addDays, daysBetween, isISODate } = require('../util');
+const { today, addDays, daysBetween, isISODate, photoStep } = require('../util');
+const { savePhoto, ALLOWED_TYPES } = require('../storage');
+const multer = require('multer');
 
 const MAX_DAYS = 30;
+const MAX_LOAN_PHOTOS = 6; // per step (pickup / hand-back)
+
+const loanPhotoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 4 * 1024 * 1024, files: MAX_LOAN_PHOTOS }, // the browser shrinks photos first
+  fileFilter: (req, file, cb) => cb(null, ALLOWED_TYPES.includes(file.mimetype)),
+}).array('photos', MAX_LOAN_PHOTOS);
 
 const overlapQuery = db.prepare(`SELECT 1 FROM loans
   WHERE item_id = ? AND id <> ? AND status = 'approved' AND start_date <= ? AND end_date >= ?`);
@@ -54,6 +63,7 @@ router.get('/loans', requireAuth, (req, res) => {
   const lending = db.prepare(`${loanSelect} WHERE (i.owner_id = ? OR (i.is_org = 1 AND ? = 1)) ${order}`)
     .all(req.user.id, isAdmin(req.user) ? 1 : 0);
   const borrowing = db.prepare(`${loanSelect} WHERE l.borrower_id = ? ${order}`).all(req.user.id);
+  attachPhotos([...lending, ...borrowing]);
   let tab = req.query.tab;
   if (tab !== 'lending' && tab !== 'borrowing') {
     tab = lending.some((l) => l.status === 'pending') ? 'lending' : 'borrowing';
@@ -152,5 +162,68 @@ router.post('/loans/:id/returned', requireAuth, (req, res) => {
   flash(req, 'ok', req.t('flash.returned', { title: loan.title }));
   back(req, res, '/loans?tab=lending');
 });
+
+// --- Pickup and return photos ---------------------------------------------------------------
+
+const photosForLoans = db.prepare(`SELECT p.id, p.loan_id, p.kind, p.photo_key, p.created_at, u.name AS user_name
+  FROM loan_photos p LEFT JOIN users u ON u.id = p.user_id
+  WHERE p.loan_id IN (SELECT value FROM json_each(?)) ORDER BY p.created_at, p.id`);
+
+// Adds `pickupPhotos` and `returnPhotos` to every loan in the list.
+function attachPhotos(loans) {
+  for (const l of loans) { l.pickupPhotos = []; l.returnPhotos = []; }
+  if (!loans.length) return;
+  const byId = new Map(loans.map((l) => [l.id, l]));
+  for (const p of photosForLoans.all(JSON.stringify([...byId.keys()]))) {
+    // The same loan can be in both lists (an admin borrowing a shelf item); fill each copy.
+    for (const l of loans) if (l.id === p.loan_id) (p.kind === 'pickup' ? l.pickupPhotos : l.returnPhotos).push(p);
+  }
+}
+
+// The borrower confirms each handover with photos: when they get the item and when they give it back.
+// The step is only offered at the right moment and only once, so the photos show the condition then.
+const STEPS = {
+  pickup: { column: 'picked_up_at', notice: 'n.picked_up', flash: 'flash.picked_up' },
+  return: { column: 'handed_back_at', notice: 'n.handed_back', flash: 'flash.handed_back' },
+};
+
+function photoStepRoute(kind) {
+  const step = STEPS[kind];
+  return async (req, res) => {
+    const loan = loadLoan(req, res);
+    if (!loan) return;
+    if (loan.borrower_id !== req.user.id) return res.sendStatus(403);
+    const done = (type, key) => {
+      flash(req, type, req.t(key, { n: MAX_LOAN_PHOTOS }));
+      back(req, res, '/loans?tab=borrowing');
+    };
+
+    const err = await new Promise((resolve) => loanPhotoUpload(req, res, (e) => resolve(e)));
+    if (photoStep(loan) !== kind) return done('error', 'flash.photo_not_now');
+    if (err && (err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_UNEXPECTED_FILE')) return done('error', 'flash.photo_limit');
+    if (err) return done('error', 'err.photo');
+    if (!req.files || !req.files.length) return done('error', 'flash.photo_required');
+
+    const keys = [];
+    for (const f of req.files) keys.push(await savePhoto(f));
+    tx(() => {
+      for (const key of keys) {
+        db.prepare('INSERT INTO loan_photos (loan_id, user_id, kind, photo_key) VALUES (?, ?, ?, ?)')
+          .run(loan.id, req.user.id, kind, key);
+      }
+      db.prepare(`UPDATE loans SET ${step.column} = datetime('now') WHERE id = ?`).run(loan.id);
+    });
+
+    for (const id of managersOf(loan)) {
+      if (id === req.user.id) continue;
+      notify(id, (x) => x.t(step.notice, { name: req.user.name, title: loan.title, n: keys.length }), '/loans?tab=lending',
+        { email: kind === 'return', subject: (x) => x.t('mail.handed_back', { title: loan.title }) });
+    }
+    done('ok', step.flash);
+  };
+}
+
+router.post('/loans/:id/picked-up', requireAuth, photoStepRoute('pickup'));
+router.post('/loans/:id/hand-back', requireAuth, photoStepRoute('return'));
 
 module.exports = router;

@@ -42,7 +42,7 @@
             <% if (l.status === 'pending') { %>
               <form method="post" action="/loans/<%= l.id %>/approve"><button class="btn btn-primary btn-sm"><%= t('item.approve') %></button></form>
               <form method="post" action="/loans/<%= l.id %>/decline"><button class="btn btn-sm"><%= t('item.decline') %></button></form>
-            <% } else if (st === 'active' || st === 'overdue') { %>
+            <% } else if (st === 'active' || st === 'overdue' || st === 'handed_back') { %>
               <form method="post" action="/loans/<%= l.id %>/returned"><button class="btn btn-primary btn-sm"><%= t('item.mark_returned') %></button></form>
             <% } else { %>
               <form method="post" action="/loans/<%= l.id %>/decline" data-confirm="<%= t('item.cancel_loan_confirm') %>"><button class="btn btn-sm"><%= t('item.cancel') %></button></form>

@@ -8,7 +8,7 @@ function runReminders() {
   const tomorrow = addDays(t, 1);
   const base = `SELECT l.id, l.borrower_id, l.end_date, i.id AS item_id, i.title, i.owner_id, i.is_org, b.name AS borrower_name
                 FROM loans l JOIN items i ON i.id = l.item_id JOIN users b ON b.id = l.borrower_id
-                WHERE l.status = 'approved'`;
+                WHERE l.status = 'approved' AND l.handed_back_at IS NULL`;
 
   const due = db.prepare(`${base} AND l.reminder_sent = 0 AND l.end_date = ?`).all(tomorrow);
   for (const l of due) {
