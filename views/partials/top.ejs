@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="<%= asset('style.css') %>">
 </head>
 <body class="<%= user ? 'has-nav' : '' %>">
-<% const tabs = user ? navTabs(user, { pending: pendingCount, messages: openMessages }, t) : []; %>
+<% const tabs = user ? navTabs(user, { pending: pendingCount, inbox: unreadMessages, contact: openMessages }, t) : []; %>
 <header class="top">
   <div class="top-in">
     <a href="<%= user ? '/items' : '/' %>" class="logo">
@@ -35,7 +35,7 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
           <% if (unread) { %><span class="dot"><%= unread > 9 ? '9+' : unread %></span><% } %>
         </a>
-        <a href="/me" class="avatar avatar-sm <%= /^\/(me|neighbourhood)/.test(path) ? 'on' : '' %>" aria-label="<%= t('nav.profile') %>"><%= user.name[0].toUpperCase() %></a>
+        <a href="/me" class="avatar avatar-sm <%= /^\/(me|neighbourhood)(\/|$)/.test(path) ? 'on' : '' %>" aria-label="<%= t('nav.profile') %>"><%= user.name[0].toUpperCase() %></a>
       <% } else { %>
         <a href="/about" class="link link-quiet <%= path.startsWith('/about') ? 'on' : '' %>"><%= t('nav.about') %></a>
         <a href="/login" class="link"><%= t('auth.login') %></a>

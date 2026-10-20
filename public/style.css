@@ -373,3 +373,34 @@ td.actions { flex-wrap: nowrap; }
 .avatar-sm.on { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
 .link-quiet { color: var(--muted); }
 .link-quiet:hover, .link-quiet.on { color: var(--ink); }
+
+/* Messages */
+.convo { align-items: flex-start; }
+.convo.unread { border-left: 3px solid var(--accent); }
+.convo.unread .convo-last { font-weight: 600; color: var(--ink); }
+.convo-head { display: flex; justify-content: space-between; gap: 8px; }
+.convo-last { color: var(--muted); margin-top: 2px; }
+.convo .dot-inline { align-self: center; }
+.thread-head { display: flex; gap: 12px; align-items: center; margin: 8px 0 12px; padding: 12px; }
+.thread-title { font-size: 18px; margin: 0; }
+.bubbles { display: grid; gap: 10px; padding: 8px 0 16px; }
+.bubble-row { display: grid; gap: 3px; max-width: 82%; }
+.bubble-row.mine { justify-self: end; justify-items: end; }
+.bubble-row.theirs { justify-self: start; justify-items: start; }
+.bubble { padding: 10px 14px; border-radius: 18px; white-space: pre-line; overflow-wrap: anywhere; font-size: 15px; line-height: 1.4; }
+.mine .bubble { background: var(--accent); color: var(--accent-ink); border-bottom-right-radius: 6px; }
+.theirs .bubble { background: var(--card); border: 1px solid var(--line); border-bottom-left-radius: 6px; }
+.composer { position: sticky; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 8px); display: flex; gap: 8px; align-items: flex-end; padding: 8px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); }
+.composer textarea { border: 0; min-height: 42px; max-height: 160px; resize: none; padding: 10px; }
+.composer textarea:focus { outline: none; }
+.composer .btn { min-height: 42px; }
+.ask { margin: 16px 0; }
+.ask summary strong { font-size: 15px; }
+.ask-continue { gap: 10px; margin: 16px 0; }
+.chips-list { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.chip-link { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); font-size: 14px; font-weight: 600; }
+.chip-link:hover { border-color: var(--muted); text-decoration: none; }
+@media (min-width: 900px) {
+  .composer { bottom: 16px; }
+  .bubble-row { max-width: 70%; }
+}

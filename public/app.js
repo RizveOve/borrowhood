@@ -69,3 +69,18 @@ document.querySelectorAll('form[data-autosubmit]').forEach((form) => {
     if (e.target.name !== 'q') form.requestSubmit();
   });
 });
+
+// Chat: grow the message box with its content, send with Enter (Shift+Enter for a new line),
+// and start at the newest message.
+document.querySelectorAll('textarea[data-autogrow]').forEach((ta) => {
+  const grow = () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 160) + 'px'; };
+  ta.addEventListener('input', grow);
+  ta.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && window.matchMedia('(pointer: fine)').matches) {
+      e.preventDefault();
+      if (ta.value.trim()) ta.form.requestSubmit();
+    }
+  });
+});
+const latest = document.getElementById('latest');
+if (latest) latest.scrollIntoView({ block: 'end' });

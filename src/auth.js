@@ -8,6 +8,8 @@ const userQuery = db.prepare(`
   WHERE u.id = ?`);
 const unreadQuery = db.prepare('SELECT COUNT(*) AS c FROM notifications WHERE user_id = ? AND is_read = 0');
 const openMessagesQuery = db.prepare("SELECT COUNT(*) AS c FROM contact_messages WHERE status = 'open'");
+const unreadMessagesQuery = db.prepare(`SELECT COUNT(*) AS c FROM messages m JOIN conversations c ON c.id = m.conversation_id
+  WHERE (c.owner_id = ? OR c.asker_id = ?) AND m.sender_id <> ? AND m.read_at IS NULL`);
 const pendingQuery = db.prepare(`
   SELECT COUNT(*) AS c FROM loans l JOIN items i ON i.id = l.item_id
   WHERE l.status = 'pending' AND (i.owner_id = ? OR (i.is_org = 1 AND ? = 1))`);
@@ -34,11 +36,13 @@ function loadUser(req, res, next) {
   res.locals.unread = 0;
   res.locals.pendingCount = 0;
   res.locals.openMessages = 0;
+  res.locals.unreadMessages = 0;
   if (req.user) {
     const isAdmin = req.user.role === 'admin' ? 1 : 0;
     res.locals.unread = unreadQuery.get(req.user.id).c;
     res.locals.pendingCount = pendingQuery.get(req.user.id, isAdmin).c;
     if (isAdmin) res.locals.openMessages = openMessagesQuery.get().c;
+    res.locals.unreadMessages = unreadMessagesQuery.get(req.user.id, req.user.id, req.user.id).c;
   }
   next();
 }

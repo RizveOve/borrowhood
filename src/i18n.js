@@ -1,6 +1,6 @@
 // English / Norwegian (bokmål) strings. Use t('key', { var }) in views and req.t() in routes.
 const en = {
-  'nav.browse': 'Browse', 'nav.lend': 'Lend', 'nav.loans': 'Loans', 'nav.me': 'Me', 'nav.admin': 'Admin', 'nav.about': 'About',
+  'nav.browse': 'Browse', 'nav.lend': 'Lend', 'nav.loans': 'Loans', 'nav.me': 'Me', 'nav.admin': 'Admin', 'nav.about': 'About', 'nav.messages': 'Messages',
   'nav.notifications': 'Notifications', 'nav.profile': 'Your profile', 'nav.language': 'Language',
   'auth.login': 'Log in', 'auth.signup': 'Sign up', 'auth.logout': 'Log out',
   'common.back': 'Back', 'common.save': 'Save', 'common.edit': 'Edit', 'common.delete': 'Delete',
@@ -153,12 +153,24 @@ const en = {
   'admin.messages': 'Messages', 'admin.no_messages': 'No messages yet.', 'admin.resolve': 'Mark resolved', 'admin.reopen': 'Reopen',
   'admin.reply': 'Reply by email', 'admin.open_count': '{n} open', 'status.open': 'Open', 'status.resolved': 'Resolved',
 
+  'msg.title': 'Messages', 'msg.empty': 'No messages yet.',
+  'msg.empty_text': 'Found something you want to borrow? Ask the owner a question from the item page.',
+  'msg.you': 'You', 'msg.item_removed': 'Item removed', 'msg.view_item': 'View item', 'msg.back': 'All messages',
+  'msg.placeholder': 'Write a message…', 'msg.send': 'Send',
+  'msg.start': 'Say hello! Ask about the condition, a pick-up time or anything else.',
+  'msg.privacy': 'Only you and {name} can see this conversation.',
+  'msg.ask_title': 'Ask {name} a question', 'msg.ask_ph': 'Hi! Is it free this weekend? Does it come with…?',
+  'msg.ask_send': 'Send message', 'msg.continue': 'Continue your conversation with {name} →',
+  'msg.owner_convs': 'Conversations about this item', 'msg.message_btn': 'Message',
+  'msg.err_empty': 'Write a message first.',
+  'msg.n_new': '{name} sent you a message about "{title}": {preview}', 'msg.mail_new': 'New message from {name} about "{title}"',
+
   'err.not_found': 'Not found', 'err.not_found_text': "We couldn't find that page.", 'err.server': 'Something went wrong',
   'err.server_text': 'Please try again in a moment.', 'err.forbidden': 'Not allowed', 'err.admins_only': 'Admins only.',
 };
 
 const nb = {
-  'nav.browse': 'Utforsk', 'nav.lend': 'Lån ut', 'nav.loans': 'Lån', 'nav.me': 'Profil', 'nav.admin': 'Admin', 'nav.about': 'Om oss',
+  'nav.browse': 'Utforsk', 'nav.lend': 'Lån ut', 'nav.loans': 'Lån', 'nav.me': 'Profil', 'nav.admin': 'Admin', 'nav.about': 'Om oss', 'nav.messages': 'Meldinger',
   'nav.notifications': 'Varsler', 'nav.profile': 'Din profil', 'nav.language': 'Språk',
   'auth.login': 'Logg inn', 'auth.signup': 'Registrer deg', 'auth.logout': 'Logg ut',
   'common.back': 'Tilbake', 'common.save': 'Lagre', 'common.edit': 'Rediger', 'common.delete': 'Slett',
@@ -310,6 +322,18 @@ const nb = {
   'item.report': 'Rapporter denne tingen',
   'admin.messages': 'Meldinger', 'admin.no_messages': 'Ingen meldinger ennå.', 'admin.resolve': 'Merk som løst', 'admin.reopen': 'Åpne igjen',
   'admin.reply': 'Svar på e-post', 'admin.open_count': '{n} åpne', 'status.open': 'Åpen', 'status.resolved': 'Løst',
+
+  'msg.title': 'Meldinger', 'msg.empty': 'Ingen meldinger ennå.',
+  'msg.empty_text': 'Fant du noe du vil låne? Still eieren et spørsmål fra siden til tingen.',
+  'msg.you': 'Deg', 'msg.item_removed': 'Tingen er fjernet', 'msg.view_item': 'Se tingen', 'msg.back': 'Alle meldinger',
+  'msg.placeholder': 'Skriv en melding …', 'msg.send': 'Send',
+  'msg.start': 'Si hei! Spør om tilstand, hentetidspunkt eller hva som helst.',
+  'msg.privacy': 'Bare du og {name} kan se denne samtalen.',
+  'msg.ask_title': 'Spør {name}', 'msg.ask_ph': 'Hei! Er den ledig denne helgen? Følger det med …?',
+  'msg.ask_send': 'Send melding', 'msg.continue': 'Fortsett samtalen med {name} →',
+  'msg.owner_convs': 'Samtaler om denne tingen', 'msg.message_btn': 'Melding',
+  'msg.err_empty': 'Skriv en melding først.',
+  'msg.n_new': '{name} sendte deg en melding om «{title}»: {preview}', 'msg.mail_new': 'Ny melding fra {name} om «{title}»',
 
   'err.not_found': 'Fant ikke siden', 'err.not_found_text': 'Vi fant ikke det du lette etter.', 'err.server': 'Noe gikk galt',
   'err.server_text': 'Prøv igjen om litt.', 'err.forbidden': 'Ikke tillatt', 'err.admins_only': 'Kun for admin.',

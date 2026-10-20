@@ -117,7 +117,30 @@ CREATE TABLE IF NOT EXISTS contact_messages (
   resolved_at TEXT
 );
 
+-- Private conversations between someone interested in an item and its owner.
+CREATE TABLE IF NOT EXISTS conversations (
+  id         INTEGER PRIMARY KEY,
+  item_id    INTEGER REFERENCES items(id) ON DELETE SET NULL,
+  owner_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  asker_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (item_id, asker_id)
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+  id              INTEGER PRIMARY KEY,
+  conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  sender_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  body            TEXT NOT NULL,
+  created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+  read_at         TEXT
+);
+
 CREATE INDEX IF NOT EXISTS idx_users_hood ON users(neighbourhood_id);
+CREATE INDEX IF NOT EXISTS idx_conv_owner ON conversations(owner_id, updated_at);
+CREATE INDEX IF NOT EXISTS idx_conv_asker ON conversations(asker_id, updated_at);
+CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id, id);
 CREATE INDEX IF NOT EXISTS idx_contact_status ON contact_messages(status, created_at);
 CREATE INDEX IF NOT EXISTS idx_items_owner ON items(owner_id);
 CREATE INDEX IF NOT EXISTS idx_loans_item ON loans(item_id, status);

@@ -1,0 +1,27 @@
+<%- include('partials/top') %>
+<h1><%= t('msg.title') %></h1>
+<% if (!conversations.length) { %>
+  <div class="empty">
+    <p><%= t('msg.empty') %></p>
+    <p class="muted small"><%= t('msg.empty_text') %></p>
+    <a href="/items" class="btn btn-primary"><%= t('loans.browse') %></a>
+  </div>
+<% } else { %>
+  <ul class="list">
+    <% conversations.forEach(c => {
+      const iAmOwner = c.owner_id === user.id;
+      const otherName = iAmOwner ? c.asker_name : (c.is_org ? 'BorrowHood' : c.owner_name);
+    %>
+      <li><a href="/messages/<%= c.id %>" class="row link-row convo <%= c.unread ? 'unread' : '' %>">
+        <span class="mini"><% if (c.item_id) { %><%- include('partials/thumb', { it: c }) %><% } else { %><span class="ph">📦</span><% } %></span>
+        <div class="grow">
+          <div class="convo-head"><strong class="clamp"><%= otherName %></strong><span class="muted tiny nowrap"><%= fmtDate(c.updated_at) %></span></div>
+          <div class="muted small clamp"><%= c.item_title || t('msg.item_removed') %></div>
+          <div class="small clamp convo-last"><%= c.last_sender === user.id ? t('msg.you') + ': ' : '' %><%= c.last_body %></div>
+        </div>
+        <% if (c.unread) { %><span class="dot dot-inline"><%= c.unread %></span><% } %>
+      </a></li>
+    <% }) %>
+  </ul>
+<% } %>
+<%- include('partials/bottom') %>
