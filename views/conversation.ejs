@@ -1,0 +1,33 @@
+<%- include('partials/top') %>
+<a href="/messages" class="back">← <%= t('msg.back') %></a>
+<div class="thread" data-thread="<%= conv.id %>" data-after="<%= messages.length ? messages[messages.length - 1].id : 0 %>">
+  <div class="thread-head card">
+    <% if (conv.item_id) { %>
+      <a href="/items/<%= conv.item_id %>" class="mini"><%- include('partials/thumb', { it: conv }) %></a>
+    <% } %>
+    <div class="grow">
+      <h1 class="thread-title"><%= other.name %></h1>
+      <div class="muted small clamp">
+        <% if (conv.item_id) { %><a href="/items/<%= conv.item_id %>"><%= conv.item_title %></a><% } else { %><%= t('msg.item_removed') %><% } %>
+      </div>
+    </div>
+  </div>
+
+  <div class="bubbles" aria-live="polite">
+    <% if (!messages.length) { %><p class="muted small center" data-empty><%= t('msg.start') %></p><% } %>
+    <% messages.forEach((m, i) => { const mine = m.sender_id === user.id; %>
+      <div class="bubble-row <%= mine ? 'mine' : 'theirs' %>" data-id="<%= m.id %>" <%- i === messages.length - 1 ? 'id="latest"' : '' %>>
+        <div class="bubble"><%= m.body %></div>
+        <span class="tiny muted"><%= fmtDateTime(m.created_at) %></span>
+      </div>
+    <% }) %>
+  </div>
+
+  <form method="post" action="/messages/<%= conv.id %>" class="composer">
+    <label class="sr-only" for="msg-body"><%= t('msg.placeholder') %></label>
+    <textarea id="msg-body" name="body" rows="1" maxlength="2000" required placeholder="<%= t('msg.placeholder') %>" data-autogrow></textarea>
+    <button class="btn btn-primary"><%= t('msg.send') %></button>
+  </form>
+  <p class="tiny muted center"><%= t('msg.privacy', { name: other.name }) %></p>
+</div>
+<%- include('partials/bottom') %>
