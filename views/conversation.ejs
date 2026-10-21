@@ -1,6 +1,6 @@
 <%- include('partials/top') %>
 <a href="/messages" class="back">← <%= t('msg.back') %></a>
-<div class="thread">
+<div class="thread" data-thread="<%= conv.id %>" data-after="<%= messages.length ? messages[messages.length - 1].id : 0 %>">
   <div class="thread-head card">
     <% if (conv.item_id) { %>
       <a href="/items/<%= conv.item_id %>" class="mini"><%- include('partials/thumb', { it: conv }) %></a>
@@ -14,11 +14,11 @@
   </div>
 
   <div class="bubbles" aria-live="polite">
-    <% if (!messages.length) { %><p class="muted small center"><%= t('msg.start') %></p><% } %>
+    <% if (!messages.length) { %><p class="muted small center" data-empty><%= t('msg.start') %></p><% } %>
     <% messages.forEach((m, i) => { const mine = m.sender_id === user.id; %>
-      <div class="bubble-row <%= mine ? 'mine' : 'theirs' %>" <%- i === messages.length - 1 ? 'id="latest"' : '' %>>
+      <div class="bubble-row <%= mine ? 'mine' : 'theirs' %>" data-id="<%= m.id %>" <%- i === messages.length - 1 ? 'id="latest"' : '' %>>
         <div class="bubble"><%= m.body %></div>
-        <span class="tiny muted"><%= fmtDate(m.created_at) %> <%= m.created_at.slice(11, 16) %></span>
+        <span class="tiny muted"><%= fmtDateTime(m.created_at) %></span>
       </div>
     <% }) %>
   </div>

@@ -10,7 +10,7 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="stylesheet" href="<%= asset('style.css') %>">
 </head>
-<body class="<%= user ? 'has-nav' : '' %>">
+<body class="<%= user ? 'has-nav' : '' %>" <%- user ? 'data-auth' : '' %>>
 <% const tabs = user ? navTabs(user, { pending: pendingCount, inbox: unreadMessages, contact: openMessages }, t) : []; %>
 <header class="top">
   <div class="top-in">
