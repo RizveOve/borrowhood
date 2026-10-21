@@ -6,6 +6,7 @@ const { db } = require('../db');
 const { requireAuth, flash } = require('../auth');
 const { getItem } = require('../items');
 const { notify } = require('../notify');
+const { fmtDateTime } = require('../util');
 
 const MAX_LEN = 2000;
 
@@ -16,14 +17,27 @@ const convSelect = `SELECT c.*, i.title AS item_title, i.category, i.photo_key, 
   JOIN users o ON o.id = c.owner_id
   JOIN users a ON a.id = c.asker_id`;
 
+// The chat page talks to these routes with fetch() and asks for JSON instead of HTML.
+const wantsJson = (req) => (req.get('Accept') || '').includes('application/json');
+
 function loadConversation(req, res) {
   const c = db.prepare(`${convSelect} WHERE c.id = ?`).get(Number(req.params.id) || 0);
   if (!c || (c.owner_id !== req.user.id && c.asker_id !== req.user.id)) {
-    res.status(404).render('error', { title: req.t('err.not_found'), message: req.t('err.not_found_text') });
+    if (wantsJson(req)) res.status(404).json({ error: 'not_found' });
+    else res.status(404).render('error', { title: req.t('err.not_found'), message: req.t('err.not_found_text') });
     return null;
   }
   return c;
 }
+
+const unreadQuery = db.prepare(`SELECT COUNT(*) AS c FROM messages m JOIN conversations c ON c.id = m.conversation_id
+  WHERE (c.owner_id = ? OR c.asker_id = ?) AND m.sender_id <> ? AND m.read_at IS NULL`);
+const unreadFor = (userId) => unreadQuery.get(userId, userId, userId).c;
+
+const markRead = (convId, userId) => db.prepare(`UPDATE messages SET read_at = datetime('now')
+  WHERE conversation_id = ? AND sender_id <> ? AND read_at IS NULL`).run(convId, userId);
+
+const toJson = (m, req) => ({ id: m.id, mine: m.sender_id === req.user.id, body: m.body, time: fmtDateTime(m.created_at, req.lang) });
 
 function findOrCreate(itemId, ownerId, askerId) {
   const existing = db.prepare('SELECT id FROM conversations WHERE item_id = ? AND asker_id = ?').get(itemId, askerId);
@@ -33,7 +47,8 @@ function findOrCreate(itemId, ownerId, askerId) {
 }
 
 function send(req, conv, body) {
-  db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?, ?, ?)').run(conv.id, req.user.id, body);
+  const id = Number(db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?, ?, ?)')
+    .run(conv.id, req.user.id, body).lastInsertRowid);
   db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(conv.id);
   const to = conv.owner_id === req.user.id ? conv.asker_id : conv.owner_id;
   const preview = body.length > 140 ? body.slice(0, 140).trimEnd() + '…' : body;
@@ -41,6 +56,7 @@ function send(req, conv, body) {
   // Unread messages show on the Messages tab; email only (no bell notification) to avoid doubles.
   notify(to, (x) => x.t('msg.n_new', { name: req.user.name, title, preview }), `/messages/${conv.id}`,
     { email: true, inApp: false, subject: (x) => x.t('msg.mail_new', { name: req.user.name, title }) });
+  return db.prepare('SELECT * FROM messages WHERE id = ?').get(id);
 }
 
 const readBody = (req) => String((req.body || {}).body || '').trim().slice(0, MAX_LEN);
@@ -57,25 +73,40 @@ router.get('/messages', requireAuth, (req, res) => {
   res.render('messages', { title: req.t('msg.title'), conversations });
 });
 
+// Polled by every page (about every 20 s) to keep the Messages badge up to date.
+router.get('/messages/unread-count', requireAuth, (req, res) => {
+  res.set('Cache-Control', 'no-store').json({ unread: unreadFor(req.user.id) });
+});
+
 router.get('/messages/:id', requireAuth, (req, res) => {
   const conv = loadConversation(req, res);
   if (!conv) return;
-  db.prepare("UPDATE messages SET read_at = datetime('now') WHERE conversation_id = ? AND sender_id <> ? AND read_at IS NULL")
-    .run(conv.id, req.user.id);
+  markRead(conv.id, req.user.id);
   const messages = db.prepare('SELECT * FROM messages WHERE conversation_id = ? ORDER BY id').all(conv.id);
-  res.locals.unreadMessages = db.prepare(`SELECT COUNT(*) AS c FROM messages m JOIN conversations c ON c.id = m.conversation_id
-    WHERE (c.owner_id = ? OR c.asker_id = ?) AND m.sender_id <> ? AND m.read_at IS NULL`).get(req.user.id, req.user.id, req.user.id).c;
+  res.locals.unreadMessages = unreadFor(req.user.id);
   const other = conv.owner_id === req.user.id
     ? { id: conv.asker_id, name: conv.asker_name }
     : { id: conv.owner_id, name: conv.is_org ? 'BorrowHood' : conv.owner_name };
   res.render('conversation', { title: other.name, conv, messages, other, wide: false });
 });
 
+// Polled by an open chat (every few seconds): messages newer than ?after=<last id>.
+// Only writes to the database when there is something new to mark as read.
+router.get('/messages/:id/updates', requireAuth, (req, res) => {
+  const conv = loadConversation(req, res);
+  if (!conv) return;
+  const after = Number(req.query.after) || 0;
+  const fresh = db.prepare('SELECT * FROM messages WHERE conversation_id = ? AND id > ? ORDER BY id').all(conv.id, after);
+  if (fresh.some((m) => m.sender_id !== req.user.id && !m.read_at)) markRead(conv.id, req.user.id);
+  res.set('Cache-Control', 'no-store').json({ messages: fresh.map((m) => toJson(m, req)), unread: unreadFor(req.user.id) });
+});
+
 router.post('/messages/:id', requireAuth, (req, res) => {
   const conv = loadConversation(req, res);
   if (!conv) return;
   const body = readBody(req);
-  if (body) send(req, conv, body);
+  const message = body ? send(req, conv, body) : null;
+  if (wantsJson(req)) return message ? res.json({ message: toJson(message, req) }) : res.status(400).json({ error: 'empty' });
   res.redirect(`/messages/${conv.id}#latest`);
 });
 

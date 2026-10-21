@@ -1,6 +1,6 @@
 const { db } = require('./db');
 const { translator, pickLang } = require('./i18n');
-const { fmtDate } = require('./util');
+const { fmtDate, fmtDateTime } = require('./util');
 
 const userQuery = db.prepare(`
   SELECT u.*, n.name AS hood_name, n.join_code AS hood_code, n.kind AS hood_kind
@@ -28,6 +28,7 @@ function loadUser(req, res, next) {
   res.locals.lang = lang;
   res.locals.t = req.t;
   res.locals.fmtDate = (iso) => fmtDate(iso, lang);
+  res.locals.fmtDateTime = (ts) => fmtDateTime(ts, lang);
   res.locals.flash = null;
   if (req.session && req.session.flash) {
     res.locals.flash = req.session.flash;

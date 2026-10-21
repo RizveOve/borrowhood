@@ -15,7 +15,7 @@ AWS re/Start Portfolio Project.
 - Request an item for a date range. The owner approves or declines it, and the app blocks double bookings.
 - Get a reminder the day before the return date and an overdue alert to both sides, in the app and by email.
 - The owner marks the item as returned.
-- **Messages between neighbours:** ask an owner a question from the item page ("Ask … a question"), or message the other person from a loan. Conversations are private to the two people (shelf items are answered by the admin), with an unread badge on the Messages tab.
+- **Messages between neighbours:** ask an owner a question from the item page ("Ask … a question"), or message the other person from a loan. Conversations are private to the two people (shelf items are answered by the admin), with an unread badge on the Messages tab. Open chats update live (new messages appear within a few seconds, without reloading).
 - **About & contact page** (`/about`): who we are, a short FAQ and a contact form for questions, problems and reports. It's linked from the main menu, item pages have a "Report this item" link, and each message notifies the admin and lands in the dashboard to reply to and resolve.
 - **English / Norwegian (bokmål):** the EN/NO toggle in the header switches the whole app. Logged-in users keep their choice, and their notifications and emails are written in it. Visitors get Norwegian automatically if their browser asks for it. Strings live in `src/i18n.js`.
 - **Master admin:** a dashboard with stats, overdue loans, every neighbourhood, user, item and loan. The admin can delete users, items and neighbourhoods, rotate join codes and run the reminder job on demand.

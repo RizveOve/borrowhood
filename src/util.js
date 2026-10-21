@@ -31,6 +31,16 @@ function fmtDate(iso, lang = 'en') {
   }).replace(/\.$/, '');
 }
 
+// Timestamps from SQLite's datetime('now') are UTC ("2026-10-20 18:57:03"); show them in local time.
+function fmtDateTime(ts, lang = 'en') {
+  if (!ts) return '';
+  const d = new Date(ts.replace(' ', 'T') + 'Z');
+  const locale = lang === 'nb' ? 'nb-NO' : 'en-GB';
+  const date = d.toLocaleDateString(locale, { day: 'numeric', month: 'short', timeZone: TZ }).replace(/\.$/, '');
+  const time = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', timeZone: TZ });
+  return `${date} ${time}`;
+}
+
 const CATEGORIES = [
   { key: 'tools', label: 'Tools', emoji: '🛠️' },
   { key: 'garden', label: 'Garden', emoji: '🌱' },
@@ -78,7 +88,7 @@ const STATE_LABEL = {
 };
 
 module.exports = {
-  TZ, today, addDays, daysBetween, isISODate, fmtDate,
+  TZ, today, addDays, daysBetween, isISODate, fmtDate, fmtDateTime,
   CATEGORIES, CAT_KEYS, catEmoji, catLabel, HOOD_KINDS,
   joinCode, isEmail, loanState, STATE_LABEL,
 };
