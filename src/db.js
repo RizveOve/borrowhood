@@ -103,6 +103,17 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Photos taken when an item is picked up and when it is handed back, as a record of its condition.
+CREATE TABLE IF NOT EXISTS loan_photos (
+  id         INTEGER PRIMARY KEY,
+  loan_id    INTEGER NOT NULL REFERENCES loans(id) ON DELETE CASCADE,
+  user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  kind       TEXT NOT NULL CHECK (kind IN ('pickup', 'return')),
+  photo_key  TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_loan_photos_loan ON loan_photos(loan_id);
 -- Messages sent through the About & contact page; handled by the admin.
 CREATE TABLE IF NOT EXISTS contact_messages (
   id          INTEGER PRIMARY KEY,
@@ -154,6 +165,10 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, is_r
   if (!itemCols.includes('photo_source')) db.exec('ALTER TABLE items ADD COLUMN photo_source TEXT');
   const userCols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
   if (!userCols.includes('lang')) db.exec('ALTER TABLE users ADD COLUMN lang TEXT');
+  // The borrower confirms pickup and hand-back, each with photos (see loan_photos).
+  const loanCols = db.prepare('PRAGMA table_info(loans)').all().map((c) => c.name);
+  if (!loanCols.includes('picked_up_at')) db.exec('ALTER TABLE loans ADD COLUMN picked_up_at TEXT');
+  if (!loanCols.includes('handed_back_at')) db.exec('ALTER TABLE loans ADD COLUMN handed_back_at TEXT');
 }
 
 open();

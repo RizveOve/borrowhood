@@ -166,8 +166,12 @@ router.post('/items/:id/delete', requireAuth, async (req, res) => {
     flash(req, 'error', req.t('flash.item_out'));
     return res.redirect('/items/' + item.id);
   }
+  // Pickup/return photos go with the loans (ON DELETE CASCADE), so collect their files first.
+  const loanPhotos = db.prepare(`SELECT p.photo_key FROM loan_photos p JOIN loans l ON l.id = p.loan_id
+    WHERE l.item_id = ?`).all(item.id);
   db.prepare('DELETE FROM items WHERE id = ?').run(item.id);
   await deletePhoto(item.photo_key);
+  for (const p of loanPhotos) await deletePhoto(p.photo_key);
   flash(req, 'ok', req.t('flash.item_removed', { title: item.title }));
   res.redirect(req.get('Referer')?.includes('/admin') ? '/admin' : '/me');
 });

@@ -77,18 +77,29 @@ function isEmail(s) {
 // Derived state shown to people: an approved loan becomes "active" or "overdue" over time.
 function loanState(l, t = today()) {
   if (l.status !== 'approved') return l.status;
+  if (l.handed_back_at) return 'handed_back';
   if (l.end_date < t) return 'overdue';
   if (l.start_date <= t) return 'active';
   return 'approved';
 }
 
+// The borrower's next step that needs photos, or null. Pickup can be confirmed from the start
+// date; hand-back only after pickup. Each step happens once, so its photos show the condition
+// at that moment and can't be replaced later.
+function photoStep(l, t = today()) {
+  if (l.status !== 'approved') return null;
+  if (!l.picked_up_at) return l.start_date <= t ? 'pickup' : null;
+  if (!l.handed_back_at) return 'return';
+  return null;
+}
+
 const STATE_LABEL = {
-  pending: 'Pending', approved: 'Approved', active: 'On loan', overdue: 'Overdue',
+  pending: 'Pending', approved: 'Approved', active: 'On loan', overdue: 'Overdue', handed_back: 'Handed back',
   declined: 'Declined', cancelled: 'Cancelled', returned: 'Returned',
 };
 
 module.exports = {
   TZ, today, addDays, daysBetween, isISODate, fmtDate, fmtDateTime,
   CATEGORIES, CAT_KEYS, catEmoji, catLabel, HOOD_KINDS,
-  joinCode, isEmail, loanState, STATE_LABEL,
+  joinCode, isEmail, loanState, photoStep, STATE_LABEL,
 };

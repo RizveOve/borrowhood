@@ -20,7 +20,7 @@ app.disable('x-powered-by');
 Object.assign(app.locals, {
   fmtDate: util.fmtDate, catEmoji: util.catEmoji, catLabel: util.catLabel,
   CATEGORIES: util.CATEGORIES, HOOD_KINDS: util.HOOD_KINDS, STATE_LABEL: util.STATE_LABEL,
-  loanState: util.loanState, today: util.today,
+  loanState: util.loanState, photoStep: util.photoStep, today: util.today,
   navTabs, asset,
 });
 

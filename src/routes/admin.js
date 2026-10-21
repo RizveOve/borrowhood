@@ -15,12 +15,12 @@ router.get('/', (req, res) => {
       (SELECT COUNT(*) FROM items WHERE is_org = 1) AS org_items,
       (SELECT COUNT(*) FROM loans WHERE status = 'pending') AS pending,
       (SELECT COUNT(*) FROM loans WHERE status = 'approved' AND start_date <= ? AND end_date >= ?) AS active,
-      (SELECT COUNT(*) FROM loans WHERE status = 'approved' AND end_date < ?) AS overdue,
+      (SELECT COUNT(*) FROM loans WHERE status = 'approved' AND handed_back_at IS NULL AND end_date < ?) AS overdue,
       (SELECT COUNT(*) FROM loans WHERE status = 'returned') AS returned`).get(t, t, t);
 
   const loanSelect = `SELECT l.*, i.title, i.is_org, b.name AS borrower_name, b.email AS borrower_email, o.name AS owner_name
     FROM loans l JOIN items i ON i.id = l.item_id JOIN users b ON b.id = l.borrower_id JOIN users o ON o.id = i.owner_id`;
-  const overdue = db.prepare(`${loanSelect} WHERE l.status = 'approved' AND l.end_date < ? ORDER BY l.end_date`).all(t);
+  const overdue = db.prepare(`${loanSelect} WHERE l.status = 'approved' AND l.handed_back_at IS NULL AND l.end_date < ? ORDER BY l.end_date`).all(t);
   const orgPending = db.prepare(`${loanSelect} WHERE l.status = 'pending' AND i.is_org = 1 ORDER BY l.start_date`).all();
   const loans = db.prepare(`${loanSelect} ORDER BY l.id DESC LIMIT 30`).all();
 

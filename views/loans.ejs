@@ -35,12 +35,47 @@
               <% } else { %>📍 <%= l.location %> · ✉️ <a href="mailto:<%= l.owner_email %>"><%= l.owner_email %></a><% } %>
             </div>
           <% } %>
+          <% const step = photoStep(l, d0); %>
+          <% if (l.pickupPhotos.length || l.returnPhotos.length) { %>
+            <div class="loan-photos">
+              <% ['pickup', 'return'].filter(k => l[k + 'Photos'].length).forEach(k => { %>
+                <div class="photo-group">
+                  <div class="muted small"><%= t('loans.photos_' + k) %></div>
+                  <div class="photo-strip">
+                    <% l[k + 'Photos'].forEach(p => { %>
+                      <a href="/photos/<%= p.photo_key %>" target="_blank" rel="noopener" class="loan-photo" title="<%= t('loans.photo_by', { name: p.user_name || '?' }) %> · <%= fmtDate(p.created_at) %>"><img src="/photos/<%= p.photo_key %>" alt="<%= t('loans.photos_' + k) %>" loading="lazy"></a>
+                    <% }) %>
+                  </div>
+                </div>
+              <% }) %>
+            </div>
+          <% } %>
+          <% if (tab === 'borrowing' && step) { %>
+            <form method="post" action="/loans/<%= l.id %>/<%= step === 'pickup' ? 'picked-up' : 'hand-back' %>" enctype="multipart/form-data" class="photo-step" data-photo-step data-remove-label="<%= t('loans.remove_photo') %>" data-step-confirm="<%= t('loans.confirm_step') %>">
+              <p class="small mb0"><%= t(step === 'pickup' ? 'loans.pickup_hint' : 'loans.return_hint') %></p>
+              <div class="photo-strip">
+                <span class="step-preview" data-step-preview></span>
+                <label class="loan-photo add" title="<%= t('loans.choose_photos') %>">
+                  <input type="file" name="photos" accept="image/*" multiple required data-step-photos>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8a2 2 0 0 1 2-2h2l2-2h6l2 2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="4"/></svg>
+                  <span class="sr-only"><%= t('loans.choose_photos') %></span>
+                </label>
+              </div>
+              <div><button class="btn btn-primary btn-sm" data-step-submit><%= t(step === 'pickup' ? 'loans.got_it' : 'loans.hand_back') %></button></div>
+            </form>
+          <% } else if (tab === 'borrowing' && st === 'handed_back') { %>
+            <p class="muted small mb0 step-note"><%= t('loans.wait_owner') %></p>
+          <% } else if (tab === 'lending' && step === 'pickup') { %>
+            <p class="muted small mb0 step-note"><%= t('loans.wait_pickup', { name: l.borrower_name }) %></p>
+          <% } else if (tab === 'lending' && st === 'handed_back') { %>
+            <p class="small mb0 step-note"><strong><%= t('loans.check_return') %></strong></p>
+          <% } %>
           <div class="actions">
             <% if (tab === 'lending') { %>
               <% if (l.status === 'pending') { %>
                 <form method="post" action="/loans/<%= l.id %>/approve"><button class="btn btn-primary btn-sm"><%= t('item.approve') %></button></form>
                 <form method="post" action="/loans/<%= l.id %>/decline"><button class="btn btn-sm"><%= t('item.decline') %></button></form>
-              <% } else if (st === 'active' || st === 'overdue') { %>
+              <% } else if (st === 'active' || st === 'overdue' || st === 'handed_back') { %>
                 <form method="post" action="/loans/<%= l.id %>/returned"><button class="btn btn-primary btn-sm"><%= t('item.mark_returned') %></button></form>
               <% } %>
             <% } else if (l.status === 'pending' || st === 'approved') { %>
