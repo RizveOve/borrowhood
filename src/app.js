@@ -95,7 +95,14 @@ app.use((err, req, res, next) => {
 async function init() {
   ensureAdmin();
   await seedOrgItems();
-  if (process.env.SEED_DEMO === '1') await seedDemo();
+  if (process.env.SEED_DEMO === '1') {
+    // Demo data is optional: a problem here must never stop the site from starting.
+    try {
+      await seedDemo();
+    } catch (e) {
+      console.error('[setup] Skipped demo data:', e.message);
+    }
+  }
   await attachSeedPhotos();
 }
 
