@@ -39,7 +39,16 @@ router.get('/', (req, res) => {
     LEFT JOIN items i ON i.id = m.item_id
     ORDER BY m.status = 'resolved', m.created_at DESC LIMIT 50`).all();
 
-  res.render('admin', { title: req.t('nav.admin'), stats, overdue, orgPending, loans, hoods, users, items, messages, todayIso: t, wide: true });
+  // Problems owners reported when an item came back, open ones first.
+  const problems = db.prepare(`SELECT li.*, l.item_id, l.borrower_id, l.start_date, l.end_date, i.title,
+      o.name AS owner_name, o.email AS owner_email, b.name AS borrower_name, b.email AS borrower_email
+    FROM loan_issues li JOIN loans l ON l.id = li.loan_id JOIN items i ON i.id = l.item_id
+    JOIN users o ON o.id = i.owner_id JOIN users b ON b.id = l.borrower_id
+    ORDER BY li.status = 'resolved', li.created_at DESC LIMIT 50`).all();
+  const photoQuery = db.prepare('SELECT * FROM loan_issue_photos WHERE issue_id = ? ORDER BY id');
+  for (const p of problems) p.photos = photoQuery.all(p.id);
+
+  res.render('admin', { title: req.t('nav.admin'), stats, overdue, orgPending, loans, hoods, users, items, messages, problems, todayIso: t, wide: true });
 });
 
 router.post('/users/:id/delete', (req, res) => {
@@ -69,6 +78,16 @@ router.post('/neighbourhoods/:id/code', (req, res) => {
   db.prepare('UPDATE neighbourhoods SET join_code = ? WHERE id = ?').run(code, Number(req.params.id));
   flash(req, 'ok', req.t('flash.new_code', { code }));
   res.redirect('/admin#hoods');
+});
+
+router.post('/problems/:id/resolve', (req, res) => {
+  db.prepare("UPDATE loan_issues SET status = 'resolved', resolved_at = datetime('now') WHERE id = ?").run(Number(req.params.id));
+  res.redirect('/admin#problems');
+});
+
+router.post('/problems/:id/reopen', (req, res) => {
+  db.prepare("UPDATE loan_issues SET status = 'open', resolved_at = NULL WHERE id = ?").run(Number(req.params.id));
+  res.redirect('/admin#problems');
 });
 
 router.post('/messages/:id/resolve', (req, res) => {

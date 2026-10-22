@@ -22,7 +22,7 @@
       <li class="loan <%= done ? 'done' : '' %> <%= st === 'overdue' ? 'is-overdue' : '' %>">
         <a href="/items/<%= l.item_id %>" class="mini"><%- include('partials/thumb', { it: l }) %></a>
         <div class="grow">
-          <div class="loan-head"><a href="/items/<%= l.item_id %>"><strong><%= l.title %></strong></a> <span class="badge badge-<%= st %>"><%= t('state.' + st) %></span></div>
+          <div class="loan-head"><a href="/items/<%= l.item_id %>"><strong><%= l.title %></strong></a> <span class="badge badge-<%= st %>"><%= t('state.' + st) %></span><% if (l.issue) { %> <span class="badge badge-overdue"><%= t('loans.problem_badge') %></span><% } %></div>
           <div class="muted small"><%= fmtDate(l.start_date) %> – <%= fmtDate(l.end_date) %> ·
             <% if (tab === 'lending') { %><%= l.borrower_name %><%= l.borrower_flat ? ' (' + l.borrower_flat + ')' : '' %>
             <% } else { %><%= l.is_org ? 'BorrowHood' : l.owner_name %><% } %>
@@ -38,16 +38,29 @@
           <% const step = photoStep(l, d0); %>
           <% if (l.pickupPhotos.length || l.returnPhotos.length) { %>
             <div class="loan-photos">
-              <% ['pickup', 'return'].filter(k => l[k + 'Photos'].length).forEach(k => { %>
+              <% ['pickup', 'return'].filter(k => l[k + 'Photos'].length).forEach(k => { const first = l[k + 'Photos'][0]; %>
                 <div class="photo-group">
-                  <div class="muted small"><%= t('loans.photos_' + k) %></div>
+                  <div class="muted small"><%= t('loans.photos_' + k) %> · <%= fmtDateTime(first.created_at) %> · <%= first.user_name || '?' %></div>
                   <div class="photo-strip">
                     <% l[k + 'Photos'].forEach(p => { %>
-                      <a href="/photos/<%= p.photo_key %>" target="_blank" rel="noopener" class="loan-photo" title="<%= t('loans.photo_by', { name: p.user_name || '?' }) %> · <%= fmtDate(p.created_at) %>"><img src="/photos/<%= p.photo_key %>" alt="<%= t('loans.photos_' + k) %>" loading="lazy"></a>
+                      <%- include('partials/loan-photo', { key: p.photo_key, gallery: 'loan-' + l.id, alt: t('loans.photos_' + k), caption: t('loans.photos_' + k) + ' · ' + fmtDateTime(p.created_at) + ' · ' + (p.user_name || '?') }) %>
                     <% }) %>
                   </div>
                 </div>
               <% }) %>
+            </div>
+          <% } %>
+          <% if (l.issue) { %>
+            <div class="issue">
+              <div class="small"><strong>⚠️ <%= t('loans.problem_title') %></strong> · <span class="muted"><%= fmtDateTime(l.issue.created_at) %> · <%= l.issue.reporter_name || '?' %></span></div>
+              <p class="issue-body"><%= l.issue.body %></p>
+              <% if (l.issue.photos.length) { %>
+                <div class="photo-strip">
+                  <% l.issue.photos.forEach(p => { %>
+                    <%- include('partials/loan-photo', { key: p.photo_key, gallery: 'loan-' + l.id, alt: t('loans.problem_title'), caption: t('loans.problem_title') + ' · ' + fmtDateTime(p.created_at) + ' · ' + (l.issue.reporter_name || '?') }) %>
+                  <% }) %>
+                </div>
+              <% } %>
             </div>
           <% } %>
           <% if (tab === 'borrowing' && step) { %>
@@ -81,10 +94,29 @@
             <% } else if (l.status === 'pending' || st === 'approved') { %>
               <form method="post" action="/loans/<%= l.id %>/cancel" data-confirm="<%= t('loans.cancel_confirm') %>"><button class="btn btn-sm"><%= t('item.cancel') %></button></form>
             <% } %>
-            <% if (!done) { %>
+            <% if (!done || l.issue) { %>
               <a class="btn btn-sm" href="/messages/with/<%= l.item_id %>/<%= tab === 'lending' ? l.borrower_id : l.owner_id %>">💬 <%= t('msg.message_btn') %></a>
             <% } %>
           </div>
+          <% if (tab === 'lending' && (st === 'active' || st === 'overdue' || st === 'handed_back')) { %>
+            <details class="problem">
+              <summary class="btn btn-sm btn-danger-soft"><%= t('loans.problem_btn') %></summary>
+              <form method="post" action="/loans/<%= l.id %>/problem" enctype="multipart/form-data" class="photo-step" data-photo-step data-remove-label="<%= t('loans.remove_photo') %>" data-step-confirm="<%= t('loans.problem_confirm', { name: l.borrower_name }) %>">
+                <p class="small mb0"><%= t('loans.problem_hint', { name: l.borrower_name }) %></p>
+                <textarea name="body" rows="3" maxlength="1000" minlength="5" required placeholder="<%= t('loans.problem_ph') %>"></textarea>
+                <div class="photo-strip">
+                  <span class="step-preview" data-step-preview></span>
+                  <label class="loan-photo add" title="<%= t('loans.choose_photos') %>">
+                    <input type="file" name="photos" accept="image/*" multiple data-step-photos>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8a2 2 0 0 1 2-2h2l2-2h6l2 2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="4"/></svg>
+                    <span class="sr-only"><%= t('loans.choose_photos') %></span>
+                  </label>
+                  <span class="muted small"><%= t('common.optional') %></span>
+                </div>
+                <div><button class="btn btn-sm btn-danger"><%= t('loans.problem_send') %></button></div>
+              </form>
+            </details>
+          <% } %>
         </div>
       </li>
     <% }) %>
