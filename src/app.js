@@ -48,6 +48,7 @@ function navTabs(user, counts, t) {
     { href: '/loans', label: t('nav.loans'), match: (p) => p.startsWith('/loans'), badge: counts.pending, icon: '<path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/>' },
     { href: '/messages', label: t('nav.messages'), match: (p) => p.startsWith('/messages'), badge: counts.inbox, icon: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>' },
     { href: '/about', label: t('nav.about'), match: (p) => p.startsWith('/about'), icon: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>' },
+    { href: '/dugnad', label: t('nav.dugnad'), match: (p) => p.startsWith('/dugnad'), icon: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/>' },
   ];
   if (user.role === 'admin') tabs.push({ href: '/admin', label: t('nav.admin'), match: (p) => p.startsWith('/admin'), badge: counts.contact, icon: '<path d="M6 20V14M12 20V4M18 20v-9"/>' });
   return tabs;
@@ -81,6 +82,7 @@ app.use(require('./routes/items'));
 app.use(require('./routes/loans'));
 app.use(require('./routes/account'));
 app.use(require('./routes/contact'));
+app.use(require('./routes/dugnad'));
 app.use(require('./routes/messages'));
 app.use('/admin', require('./routes/admin'));
 

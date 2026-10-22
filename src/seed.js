@@ -126,6 +126,37 @@ function seedDemo() {
       if (kari) loan(projector, kari.id, addDays(t, 3), addDays(t, 4), 'approved');
     });
   }
+
+  seedDemoDugnads(t);
+}
+
+// A few upcoming dugnads for the demo neighbourhoods. Dates are relative to today, and they are added
+// again whenever the demo users have none left upcoming, so the list is never empty on a demo.
+function seedDemoDugnads(t) {
+  const upcoming = db.prepare(`SELECT COUNT(*) AS c FROM dugnads d JOIN users u ON u.id = d.host_id
+    WHERE u.email LIKE '%@example.com' AND d.event_date >= ?`).get(t).c;
+  if (upcoming) return;
+  const find = (email) => db.prepare('SELECT id, name, neighbourhood_id FROM users WHERE email = ?').get(email);
+  // [host, title, days from today, time, people allowed, other neighbours who have signed up]
+  const plan = [
+    ['kari@example.com', 'Autumn clean-up of the courtyard', 3, '10:00', 12, ['ola@example.com', 'amira@example.com']],
+    ['ola@example.com', 'Paint the bike room', 8, '16:30', 2, ['kari@example.com']], // full
+    ['amira@example.com', 'Plant bulbs along the fence', 12, '12:00', 4, ['kari@example.com', 'ola@example.com']],
+    ['jonas@example.com', 'Tidy the ski room before winter', 5, '18:00', 8, ['lin@example.com']],
+    ['lin@example.com', 'Tidy the shared garden', 15, '11:00', 20, []],
+  ];
+  tx(() => {
+    for (const [host, title, days, time, capacity, joiners] of plan) {
+      const h = find(host);
+      if (!h) continue;
+      const id = Number(db.prepare(`INSERT INTO dugnads (neighbourhood_id, host_id, host_name, title, event_date, event_time, capacity)
+        VALUES (?, ?, ?, ?, ?, ?, ?)`).run(h.neighbourhood_id, h.id, h.name, title, addDays(t, days), time, capacity).lastInsertRowid);
+      for (const email of [host, ...joiners]) {
+        const u = find(email);
+        if (u && u.neighbourhood_id === h.neighbourhood_id) db.prepare('INSERT OR IGNORE INTO dugnad_signups (dugnad_id, user_id) VALUES (?, ?)').run(id, u.id);
+      }
+    }
+  });
 }
 
 module.exports = { seedOrgItems, attachSeedPhotos, seedDemo };

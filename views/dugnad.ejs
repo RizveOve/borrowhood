@@ -1,0 +1,91 @@
+<%- include('partials/top') %>
+<div class="dugnad">
+  <section class="dugnad-intro">
+    <p class="eyebrow"><%= t('dugnad.eyebrow') %></p>
+    <h1><%= t('dugnad.heading') %></h1>
+    <p class="lead"><%= t('dugnad.lead') %></p>
+    <p class="muted"><%= t('dugnad.text') %></p>
+
+    <div class="dugnad-photos">
+      <figure><img src="/stock/dugnad-2.jpg" alt="<%= t('dugnad.alt1') %>" loading="lazy"><figcaption><%= t('dugnad.cap1') %></figcaption></figure>
+      <figure><img src="/stock/dugnad-3.jpg" alt="<%= t('dugnad.alt2') %>" loading="lazy"><figcaption><%= t('dugnad.cap2') %></figcaption></figure>
+      <figure><img src="/stock/dugnad-1.jpg" alt="<%= t('dugnad.alt3') %>" loading="lazy"><figcaption><%= t('dugnad.cap3') %></figcaption></figure>
+    </div>
+    <p class="credit"><%= t('dugnad.credit') %> <a href="https://commons.wikimedia.org/wiki/Category:Talkoot" rel="noopener">Wikimedia Commons</a>.</p>
+
+    <% if (!user) { %>
+      <div class="card card-soft">
+        <p class="mb0"><strong><%= t('dugnad.login_title') %></strong></p>
+        <p class="small muted"><%= t('dugnad.login_text') %></p>
+        <a href="/login?next=%2Fdugnad" class="btn btn-primary"><%= t('auth.login') %></a>
+        <a href="/signup" class="btn"><%= t('auth.signup') %></a>
+      </div>
+    <% } %>
+  </section>
+
+  <% if (user) { %>
+  <section class="dugnad-main">
+    <% if (user.role === 'admin' || user.neighbourhood_id) { %>
+    <form method="post" action="/dugnad" class="card form" id="create">
+      <h2><%= t('dugnad.create') %></h2>
+      <% if (error) { %><div class="flash flash-error"><%= error %></div><% } %>
+      <label class="field"><span><%= t('dugnad.f_title') %></span>
+        <input name="title" value="<%= values.title %>" placeholder="<%= t('dugnad.f_title_ph') %>" maxlength="80" required></label>
+      <div class="split">
+        <label class="field"><span><%= t('dugnad.f_date') %></span>
+          <input type="date" name="date" value="<%= values.date %>" min="<%= minDate %>" required></label>
+        <label class="field"><span><%= t('dugnad.f_time') %></span>
+          <input type="time" name="time" value="<%= values.time %>" required></label>
+      </div>
+      <div class="split">
+        <label class="field"><span><%= t('dugnad.f_host') %></span>
+          <input name="host_name" value="<%= values.host_name %>" autocomplete="name" maxlength="60" required></label>
+        <label class="field"><span><%= t('dugnad.f_spots') %></span>
+          <input type="number" name="capacity" value="<%= values.capacity %>" min="<%= MIN_SPOTS %>" max="<%= MAX_SPOTS %>" inputmode="numeric" required></label>
+      </div>
+      <p class="tiny muted mb0"><%= t('dugnad.f_spots_help') %></p>
+      <button class="btn btn-primary btn-block"><%= t('dugnad.create_btn') %></button>
+    </form>
+    <% } else { %>
+    <div class="card card-soft">
+      <p class="mb0"><strong><%= t('dugnad.need_hood') %></strong></p>
+      <a href="/neighbourhood" class="btn btn-primary"><%= t('hood.title') %></a>
+    </div>
+    <% } %>
+
+    <h2 id="list"><%= t('dugnad.upcoming') %></h2>
+    <% if (!events.length) { %>
+      <div class="card empty"><p class="mb0"><strong><%= t('dugnad.empty') %></strong></p><p class="muted small"><%= t('dugnad.empty_text') %></p></div>
+    <% } else { %>
+      <ul class="list dugnad-list">
+        <% events.forEach(d => { const left = d.capacity - d.registered; const mine = d.host_id === user.id; %>
+          <li class="dugnad-item">
+            <div class="dugnad-when"><strong><%= fmtDate(d.event_date) %></strong><span><%= d.event_time %></span></div>
+            <div class="grow">
+              <strong class="dugnad-name"><%= d.title %></strong>
+              <div class="small muted"><%= t('dugnad.hosted_by', { name: d.host_name }) %></div>
+              <div class="small dugnad-spots">
+                <span><%= t('dugnad.registered', { n: d.registered, total: d.capacity }) %></span>
+                <% if (left > 0) { %><span class="badge badge-ok"><%= t('dugnad.spots_left', { n: left }) %></span>
+                <% } else { %><span class="badge badge-overdue"><%= t('dugnad.full_badge') %></span><% } %>
+                <% if (d.joined) { %><span class="badge badge-pending"><%= t(mine ? 'dugnad.hosting' : 'dugnad.youre_in') %></span><% } %>
+              </div>
+            </div>
+            <div class="dugnad-actions">
+              <% if (!d.joined && left > 0) { %>
+                <form method="post" action="/dugnad/<%= d.id %>/join"><button class="btn btn-primary btn-sm"><%= t('dugnad.join') %></button></form>
+              <% } else if (d.joined && !mine) { %>
+                <form method="post" action="/dugnad/<%= d.id %>/leave"><button class="btn btn-sm"><%= t('dugnad.leave') %></button></form>
+              <% } %>
+              <% if (mine || user.role === 'admin') { %>
+                <form method="post" action="/dugnad/<%= d.id %>/cancel" data-confirm="<%= t('dugnad.cancel_confirm') %>"><button class="btn btn-ghost btn-sm danger-text"><%= t('dugnad.cancel') %></button></form>
+              <% } %>
+            </div>
+          </li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </section>
+  <% } %>
+</div>
+<%- include('partials/bottom') %>

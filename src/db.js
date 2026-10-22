@@ -148,6 +148,28 @@ CREATE TABLE IF NOT EXISTS messages (
   read_at         TEXT
 );
 
+-- Community work days. neighbourhood_id is NULL for events created by the admin (visible to everyone).
+-- The host takes one of the spots, so they get a row in dugnad_signups too.
+CREATE TABLE IF NOT EXISTS dugnads (
+  id               INTEGER PRIMARY KEY,
+  neighbourhood_id INTEGER REFERENCES neighbourhoods(id) ON DELETE CASCADE,
+  host_id          INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  host_name        TEXT NOT NULL,
+  title            TEXT NOT NULL,
+  event_date       TEXT NOT NULL,
+  event_time       TEXT NOT NULL,
+  capacity         INTEGER NOT NULL CHECK (capacity >= 2),
+  created_at       TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS dugnad_signups (
+  dugnad_id  INTEGER NOT NULL REFERENCES dugnads(id) ON DELETE CASCADE,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (dugnad_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_dugnads_when ON dugnads(event_date, event_time);
 CREATE INDEX IF NOT EXISTS idx_users_hood ON users(neighbourhood_id);
 CREATE INDEX IF NOT EXISTS idx_conv_owner ON conversations(owner_id, updated_at);
 CREATE INDEX IF NOT EXISTS idx_conv_asker ON conversations(asker_id, updated_at);

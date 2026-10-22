@@ -38,6 +38,7 @@
         <a href="/me" class="avatar avatar-sm <%= /^\/(me|neighbourhood)(\/|$)/.test(path) ? 'on' : '' %>" aria-label="<%= t('nav.profile') %>"><%= user.name[0].toUpperCase() %></a>
       <% } else { %>
         <a href="/about" class="link link-quiet <%= path.startsWith('/about') ? 'on' : '' %>"><%= t('nav.about') %></a>
+        <a href="/dugnad" class="link link-quiet <%= path.startsWith('/dugnad') ? 'on' : '' %>"><%= t('nav.dugnad') %></a>
         <a href="/login" class="link"><%= t('auth.login') %></a>
         <a href="/signup" class="btn btn-primary btn-sm desk-only"><%= t('auth.signup') %></a>
       <% } %>
