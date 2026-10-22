@@ -77,7 +77,10 @@ async function attachSeedPhotos() {
 function seedDemo() {
   const t = today();
   const hash = bcrypt.hashSync('password123', 10);
-  const hoodId = (code) => db.prepare('SELECT id FROM neighbourhoods WHERE join_code = ?').get(code)?.id;
+  // A block counts as seeded if its neighbourhood OR any of its users exist, so deleting a demo
+  // neighbourhood or giving it a new join code never makes the seed run (and collide) again.
+  const seeded = (code, ...emails) => !!db.prepare('SELECT 1 FROM neighbourhoods WHERE join_code = ?').get(code)
+    || emails.some((e) => db.prepare('SELECT 1 FROM users WHERE email = ?').get(e));
   const user = (hood, email, name, flat) => Number(db.prepare(
     'INSERT INTO users (email, name, flat, password_hash, neighbourhood_id) VALUES (?, ?, ?, ?, ?)'
   ).run(email, name, flat, hash, hood).lastInsertRowid);
@@ -88,7 +91,7 @@ function seedDemo() {
     'INSERT INTO loans (item_id, borrower_id, start_date, end_date, status) VALUES (?, ?, ?, ?, ?)'
   ).run(itemId, borrower, s, e, status);
 
-  if (!hoodId('DEMO42')) {
+  if (!seeded('DEMO42', 'kari@example.com', 'ola@example.com', 'amira@example.com')) {
     tx(() => {
       const hood = Number(db.prepare(`INSERT INTO neighbourhoods (name, kind, city, join_code)
         VALUES ('Solsiden Borettslag', 'borettslag', 'Trondheim', 'DEMO42')`).run().lastInsertRowid);
@@ -109,7 +112,7 @@ function seedDemo() {
     });
   }
 
-  if (!hoodId('MOHO24')) {
+  if (!seeded('MOHO24', 'jonas@example.com', 'lin@example.com')) {
     tx(() => {
       const hood = Number(db.prepare(`INSERT INTO neighbourhoods (name, kind, city, join_code)
         VALUES ('Moholt Studentby', 'student', 'Trondheim', 'MOHO24')`).run().lastInsertRowid);
