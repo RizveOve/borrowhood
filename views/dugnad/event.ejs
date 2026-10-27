@@ -1,0 +1,232 @@
+<%- include('../partials/top') %>
+<% const left = dn.spotsLeft(ev); const mins = dn.durationMinutes(ev);
+   const canSeeAddress = going || invited; const here = 'event';
+   const joinable = ev.status === 'published' && !reason && !myStatus; %>
+<a href="/dugnad" class="back">← <%= t('dugnad.title') %></a>
+<div class="dugnad-event">
+  <article class="event-main">
+    <% if (ev.cover_photo_key) { %><div class="hero-img event-cover"><img src="/photos/<%= ev.cover_photo_key %>" alt=""></div><% } %>
+    <p class="eyebrow"><%= dn.catEmoji(ev.category) %> <%= t('dugnad.cat.' + ev.category) %>
+      <% if (ev.visibility === 'private') { %> · 🔒 <%= t('dugnad.private') %><% } %></p>
+    <h1 class="mb0"><%= ev.title %></h1>
+    <p class="muted"><%= t('dugnad.hosted_by', { name: ev.host_name }) %><% if (ev.organizer_name !== ev.host_name) { %> · <%= t('dugnad.organizer') %>: <%= ev.organizer_name %><% } %></p>
+
+    <% if (ev.status !== 'published') { %>
+      <div class="flash <%= ev.status === 'cancelled' ? 'flash-error' : '' %>" role="status"><strong><%= t('dugnad.status.' + ev.status) %></strong> — <%= t('dugnad.status_note.' + ev.status) %></div>
+    <% } %>
+
+    <% if (ev.description) { %><p class="desc"><%= ev.description %></p><% } %>
+
+    <% if (ev.status === 'completed' && (ev.completion_summary || ev.completion_notes)) { %>
+      <section class="card card-soft" id="summary">
+        <h2><%= t('dugnad.completion') %></h2>
+        <% if (ev.completion_summary) { %><p class="desc"><%= ev.completion_summary %></p><% } %>
+        <% if (ev.completion_notes) { %><p class="desc muted small mb0"><strong><%= t('dugnad.work_done') %>:</strong> <%= ev.completion_notes %></p><% } %>
+      </section>
+    <% } %>
+
+    <%# ---------- Announcements ---------- %>
+    <% if (ev.status !== 'draft') { %>
+    <section id="announcements">
+      <h2><%= t('dugnad.announcements') %></h2>
+      <% if (!announcements.length) { %><p class="muted small" role="status"><%= t('dugnad.no_announcements') %></p><% } %>
+      <% announcements.forEach(a => { %>
+        <div class="card announcement">
+          <strong><%= a.title %></strong>
+          <p class="desc"><%= a.message %></p>
+          <p class="tiny muted mb0"><%= a.author_name || '?' %> · <%= fmtDateTime(a.created_at) %><%= a.updated_at !== a.created_at ? ' · ' + t('dugnad.edited', { date: fmtDateTime(a.updated_at) }) : '' %></p>
+        </div>
+      <% }) %>
+    </section>
+
+    <%# ---------- Tasks ---------- %>
+    <section id="tasks">
+      <h2><%= t('dugnad.tasks') %></h2>
+      <% if (!tasks.length) { %><p class="muted small" role="status"><%= t('dugnad.no_tasks_public') %></p><% } %>
+      <% if (tasks.length && !going && ev.registration_required && ev.status === 'published') { %><p class="small muted"><%= t('dugnad.join_to_volunteer') %></p><% } %>
+      <ul class="list task-list">
+        <% tasks.forEach(tk => { const mine = myTasks.has(tk.id); const pend = myPending.has(tk.id);
+           const canAct = going && ev.status === 'published' && ['open', 'in_progress'].includes(tk.status); %>
+          <li class="task">
+            <div class="grow">
+              <strong><%= tk.title %></strong>
+              <span class="badge badge-<%= ({ assigned: 'ok', completed: 'ok', in_progress: 'warn', cancelled: 'overdue' })[tk.label] || 'x' %>"><%= t('dugnad.task_st.' + tk.label) %></span>
+              <span class="badge"><%= t('dugnad.priority.' + tk.priority) %></span>
+              <% if (tk.description) { %><div class="small muted"><%= tk.description %></div><% } %>
+              <div class="small muted">
+                👥 <%= t('dugnad.volunteers_of', { n: tk.assigned.length, total: tk.volunteers_needed }) %>
+                <% if (tk.estimated_minutes) { %> · ⏱ <%= t('dugnad.minutes', { n: tk.estimated_minutes }) %><% } %>
+                <% if (tk.required_skills) { %> · 🛠 <%= tk.required_skills %><% } %>
+              </div>
+              <% if (tk.assigned.length) { %><div class="small"><%= tk.assigned.map(a => a.name).join(', ') %></div><% } %>
+              <% if (tk.equipment.length) { %><div class="small muted">🧰 <%= tk.equipment.map(q => q.equipment_name + ' ×' + q.quantity_needed).join(', ') %></div><% } %>
+              <% if (tk.notes && going) { %><div class="quote"><%= tk.notes %></div><% } %>
+            </div>
+            <div class="dugnad-actions">
+              <% if (canAct && !mine && !pend) { %>
+                <% if (tk.full) { %><span class="badge badge-overdue"><%= t('dugnad.task_full') %></span>
+                <% } else { %><form method="post" action="/dugnad/<%= ev.id %>/tasks/<%= tk.id %>/volunteer"><input type="hidden" name="next" value="event#tasks"><button class="btn btn-primary btn-sm"><%= t('dugnad.volunteer') %></button></form><% } %>
+              <% } %>
+              <% if (pend) { %><span class="badge badge-pending"><%= t('dugnad.task_pending') %></span><% } %>
+              <% if (mine || pend) { %><form method="post" action="/dugnad/<%= ev.id %>/tasks/<%= tk.id %>/withdraw"><input type="hidden" name="next" value="event#tasks"><button class="btn btn-sm"><%= t('dugnad.task_withdraw') %></button></form><% } %>
+              <% if (mine && canAct) { %>
+                <form method="post" action="/dugnad/<%= ev.id %>/tasks/<%= tk.id %>/status" class="inline-form">
+                  <input type="hidden" name="next" value="event#tasks">
+                  <label class="sr-only" for="st<%= tk.id %>"><%= t('dugnad.task_status') %></label>
+                  <select id="st<%= tk.id %>" name="status" onchange="this.form.requestSubmit()">
+                    <% ['open', 'in_progress', 'completed'].forEach(s => { %><option value="<%= s %>" <%= tk.status === s ? 'selected' : '' %>><%= t('dugnad.task_st.' + s) %></option><% }) %>
+                  </select>
+                  <noscript><button class="btn btn-sm"><%= t('dugnad.save') %></button></noscript>
+                </form>
+              <% } %>
+            </div>
+          </li>
+        <% }) %>
+      </ul>
+    </section>
+
+    <%# ---------- Equipment ---------- %>
+    <section id="equipment">
+      <h2><%= t('dugnad.equipment') %></h2>
+      <% if (!reqs.length) { %><p class="muted small" role="status"><%= t('dugnad.no_equipment_public') %></p><% } %>
+      <ul class="list">
+        <% reqs.forEach(r => { %>
+          <li class="row req-row">
+            <div class="grow">
+              <strong><%= r.equipment_name %></strong> × <%= r.quantity_needed %>
+              <span class="small muted"> · <%= t(r.essential ? 'dugnad.essential' : 'dugnad.optional') %><%= r.task_title ? ' · ' + r.task_title : '' %></span>
+              <% if (r.description) { %><div class="small muted"><%= r.description %></div><% } %>
+              <% if (r.needed_from) { %><div class="tiny muted"><%= fmtDate(r.needed_from) %><%= r.needed_until && r.needed_until !== r.needed_from ? ' – ' + fmtDate(r.needed_until) : '' %></div><% } %>
+            </div>
+            <span class="badge badge-<%= ({ approved: 'ok', partial: 'warn', pending: 'warn', unavailable: 'overdue' })[r.state] || 'x' %>"><%= t('dugnad.req.' + r.state) %><%= r.state === 'partial' || r.state === 'approved' ? ` ${r.secured}/${r.quantity_needed}` : '' %></span>
+          </li>
+        <% }) %>
+      </ul>
+    </section>
+
+    <%# ---------- Community equipment requests ---------- %>
+    <section id="requests">
+      <h2><%= t('dugnad.requests') %></h2>
+      <% if (!requests.length) { %><p class="muted small" role="status"><%= t('dugnad.no_requests') %></p><% } %>
+      <% requests.filter(q => !(q.status === 'cancelled' && !isManager)).forEach(q => { %>
+        <div class="card request">
+          <div class="row">
+            <div class="grow">
+              <strong><%= q.equipment_name %></strong> × <%= q.quantity_needed %>
+              <span class="small muted"> · <%= t(q.essential ? 'dugnad.essential' : 'dugnad.optional') %></span>
+              <% if (q.description) { %><div class="small muted"><%= q.description %></div><% } %>
+              <% if (q.needed_from) { %><div class="tiny muted"><%= (q.needed_until || q.needed_from) === q.needed_from ? t('dugnad.needed_on', { date: fmtDate(q.needed_from) }) : t('dugnad.needed_between', { from: fmtDate(q.needed_from), to: fmtDate(q.needed_until) }) %></div><% } %>
+              <% if (q.instructions) { %><div class="quote"><%= q.instructions %></div><% } %>
+            </div>
+            <span class="badge badge-<%= ({ fulfilled: 'ok', partial: 'warn', offers: 'warn', cancelled: 'overdue' })[q.state] || 'x' %>"><%= t('dugnad.rq.' + q.state) %> <%= q.state === 'partial' || q.state === 'fulfilled' ? `${q.secured}/${q.quantity_needed}` : '' %></span>
+          </div>
+          <p class="tiny muted"><%= t('dugnad.offers_n', { n: q.offers.length }) %><% if (!q.offers.length && q.status === 'open') { %> · <%= t('dugnad.no_offers') %><% } %></p>
+          <% q.offers.filter(o => o.offered_by === user.id).forEach(o => { %>
+            <div class="small row">✓ <span class="grow"><%= t('dugnad.you_offered', { item: o.item_title }) %></span>
+              <form method="post" action="/dugnad/<%= ev.id %>/offers/<%= o.id %>/withdraw" class="inline-form"><input type="hidden" name="next" value="event#requests"><button class="btn btn-sm"><%= t('dugnad.withdraw_offer') %></button></form></div>
+          <% }) %>
+          <% if (!isManager && ev.status === 'published' && q.status === 'open' && !q.mine && !q.declined) { %>
+            <% if (myItems.length) { %>
+              <form method="post" action="/dugnad/<%= ev.id %>/requests/<%= q.id %>/offer" class="form offer-form">
+                <input type="hidden" name="next" value="event#requests">
+                <div class="row">
+                  <label class="grow field"><span class="sr-only"><%= t('dugnad.offer_item') %></span>
+                    <select name="item_id" required><% myItems.forEach(it => { %><option value="<%= it.id %>"><%= it.title %></option><% }) %></select></label>
+                  <button class="btn btn-primary btn-sm"><%= t('dugnad.offer') %></button>
+                </div>
+                <input name="message" maxlength="300" placeholder="<%= t('dugnad.offer_msg_ph') %>" aria-label="<%= t('dugnad.offer_msg_ph') %>">
+              </form>
+            <% } else { %><p class="small muted"><a href="/items/new"><%= t('dugnad.list_to_offer') %></a></p><% } %>
+            <form method="post" action="/dugnad/<%= ev.id %>/requests/<%= q.id %>/decline"><input type="hidden" name="next" value="event#requests"><button class="btn btn-ghost btn-sm"><%= t('dugnad.cant_help') %></button></form>
+          <% } %>
+        </div>
+      <% }) %>
+    </section>
+    <% } %>
+
+    <%# ---------- Participants ---------- %>
+    <% if (going && ev.status !== 'draft') { %>
+    <section id="participants">
+      <h2><%= t('dugnad.participants') %> <span class="badge"><%= participants.length %></span></h2>
+      <p class="tiny muted"><%= t('dugnad.participants_privacy') %></p>
+      <ul class="chips-list">
+        <% participants.forEach(p => { %><li><span class="chip-link"><%= p.name %><%= p.user_id === ev.organizer_id ? ' ★' : '' %>
+          <% if (isManager && ev.status === 'completed' && p.attendance_status) { %><span class="muted"> · <%= t('dugnad.att.' + p.attendance_status) %></span><% } %></span></li><% }) %>
+      </ul>
+      <% if (isManager && ev.status === 'completed') { %>
+        <details class="card"><summary><strong><%= t('dugnad.fix_attendance') %></strong></summary>
+          <ul class="list">
+            <% participants.forEach(p => { %><li class="row"><span class="grow"><%= p.name %></span>
+              <% ['attended', 'absent'].forEach(v => { %><form method="post" action="/dugnad/<%= ev.id %>/attendance/<%= p.user_id %>/<%= v %>"><input type="hidden" name="next" value="event"><button class="btn btn-sm <%= p.attendance_status === v ? 'btn-primary' : '' %>"><%= t('dugnad.att.' + v) %></button></form><% }) %>
+            </li><% }) %>
+          </ul></details>
+      <% } %>
+    </section>
+    <% } %>
+  </article>
+
+  <aside class="event-side">
+    <section class="card" aria-labelledby="facts-h">
+      <h2 id="facts-h" class="sr-only"><%= t('dugnad.details') %></h2>
+      <dl class="facts">
+        <dt>📅 <%= t('dugnad.f_date') %></dt>
+        <dd><% if (ev.event_date) { %><strong><%= fmtDate(ev.event_date) %></strong>
+          <% if (ev.start_time) { %><br><%= ev.start_time %><%= ev.end_time ? '–' + ev.end_time : '' %><% if (mins) { %> (<%= mins < 60 ? t('dugnad.minutes', { n: mins }) : mins % 60 ? t('dugnad.hours', { h: Math.floor(mins / 60), m: mins % 60 }) : t('dugnad.hours_only', { h: mins / 60 }) %>)<% } %><% } %>
+          <% } else { %><%= t('dugnad.not_set') %><% } %></dd>
+        <dt>📍 <%= t('dugnad.f_place') %></dt>
+        <dd><%= ev.location_name || t('dugnad.not_set') %>
+          <% if (canSeeAddress && ev.location_address) { %><br><span class="small"><%= ev.location_address %></span><% } %>
+          <% if (canSeeAddress && ev.location_url) { %><br><a href="<%= ev.location_url %>" target="_blank" rel="noopener noreferrer"><%= t('dugnad.open_map') %></a><% } %>
+          <% if (!canSeeAddress && (ev.location_address || ev.location_url) && ev.status !== 'draft') { %><br><span class="tiny muted"><%= t('dugnad.address_after_join') %></span><% } %></dd>
+        <% if (ev.hood_name) { %><dt>🏘 <%= t('dugnad.f_hood') %></dt><dd><%= ev.hood_name %></dd><% } %>
+        <dt>👥 <%= t('dugnad.participants') %></dt>
+        <dd><%= ev.max_participants ? t('dugnad.registered', { n: ev.registered, total: ev.max_participants }) : t('dugnad.registered_open', { n: ev.registered }) %>
+          <% if (left !== null && ev.registration_required) { %><br><span class="badge <%= left ? 'badge-ok' : 'badge-overdue' %>"><%= left ? t('dugnad.spots_left', { n: left }) : t('dugnad.full_badge') %></span><% } %></dd>
+        <% if (ev.registration_deadline) { %><dt>⏳ <%= t('dugnad.f_deadline') %></dt><dd><%= fmtDate(ev.registration_deadline) %></dd><% } %>
+        <dt>ℹ️ <%= t('dugnad.status_label') %></dt><dd><span class="badge badge-<%= ({ published: 'ok', cancelled: 'overdue', draft: 'pending' })[ev.status] || 'x' %>"><%= t('dugnad.status.' + ev.status) %></span></dd>
+      </dl>
+    </section>
+
+    <% if (ev.status === 'published') { %>
+    <section class="card" id="join" aria-labelledby="reg-h">
+      <h2 id="reg-h"><%= t('dugnad.registration') %></h2>
+      <p class="small muted"><%= !ev.registration_required ? t('dugnad.rules_none')
+        : (ev.approval_required ? t('dugnad.rules_approval') : t('dugnad.rules_open')) + ' ' + (ev.allow_leave ? t('dugnad.rules_leave') : t('dugnad.rules_noleave')) %></p>
+      <p><span class="badge badge-<%= label.tone || 'x' %>"><%= t('dugnad.reg.' + label.key) %></span></p>
+      <% if (myStatus === 'pending') { %><p class="small muted"><%= t('dugnad.pending_note') %></p>
+      <% } else if (myStatus === 'waitlisted') { %><p class="small muted"><%= t('dugnad.waitlist_note') %></p><% } %>
+      <% if (joinable) { %>
+        <form method="post" action="/dugnad/<%= ev.id %>/join"><input type="hidden" name="next" value="event">
+          <button class="btn btn-primary btn-block"><%= ev.approval_required ? t('dugnad.request_join') : (dn.isFull(ev) ? t('dugnad.join_waitlist') : t('dugnad.join_btn')) %></button></form>
+      <% } else if (!myStatus && reason && ev.registration_required) { %><p class="small muted mb0"><%= t(reason) %></p><% } %>
+      <% if (['registered', 'pending', 'waitlisted'].includes(myStatus) && ev.organizer_id !== user.id) { %>
+        <% if (myStatus !== 'registered' || ev.allow_leave) { %>
+          <form method="post" action="/dugnad/<%= ev.id %>/leave" data-confirm="<%= t('dugnad.confirm_leave') %>"><input type="hidden" name="next" value="event">
+            <button class="btn btn-block"><%= t('dugnad.leave') %></button></form>
+        <% } else { %><p class="small muted mb0"><%= t('dugnad.cannot_leave') %></p><% } %>
+      <% } %>
+    </section>
+    <% } %>
+
+    <div class="side-actions">
+      <% if (isManager) { %>
+        <a class="btn btn-primary btn-block" href="/dugnad/<%= ev.id %>/<%= ev.status === 'draft' ? 'edit/1' : 'manage' %>"><%= ev.status === 'draft' ? t('dugnad.next_finish') : t('dugnad.manage') %></a>
+      <% } %>
+      <% if (ev.status !== 'draft') { %>
+        <button type="button" class="btn btn-block" data-share="/dugnad/<%= ev.id %>" data-share-text="<%= ev.title %>" data-copied="<%= t('dugnad.link_copied') %>"><%= t('dugnad.share') %></button>
+      <% } %>
+    </div>
+    <% if (ev.status !== 'draft' && !isManager) { %>
+      <details class="report-details">
+        <summary class="small muted">⚑ <%= t('dugnad.report') %></summary>
+        <form method="post" action="/dugnad/<%= ev.id %>/report" class="form">
+          <input type="hidden" name="next" value="event">
+          <label class="field"><span class="sr-only"><%= t('dugnad.report_reason') %></span>
+            <textarea name="reason" rows="3" minlength="10" maxlength="1500" required placeholder="<%= t('dugnad.report_reason') %>"></textarea></label>
+          <button class="btn btn-sm"><%= t('contact.send') %></button>
+        </form>
+      </details>
+    <% } %>
+  </aside>
+</div>
+<%- include('../partials/bottom') %>

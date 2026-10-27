@@ -120,7 +120,17 @@ router.get('/items/:id', requireAuth, (req, res) => {
         JOIN users b ON b.id = l.borrower_id
         WHERE l.item_id = ? AND l.status IN ('pending', 'approved') ORDER BY l.status DESC, l.start_date`).all(item.id)
     : [];
-  res.render('item', { title: item.title, item, manage, bookings, mine, requests, error: /^err\.\w+$/.test(req.query.error || '') ? req.query.error : null, wide: true });
+  // Messaging: my own conversation with the owner, or (for the owner) everyone who asked.
+  const myConversation = item.owner_id === req.user.id ? null
+    : db.prepare(`SELECT c.id FROM conversations c WHERE c.item_id = ? AND c.asker_id = ?
+        AND EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id)`).get(item.id, req.user.id);
+  const conversations = item.owner_id !== req.user.id ? []
+    : db.prepare(`SELECT c.id, a.name AS asker_name,
+        (SELECT COUNT(*) FROM messages m WHERE m.conversation_id = c.id AND m.sender_id <> ? AND m.read_at IS NULL) AS unread
+      FROM conversations c JOIN users a ON a.id = c.asker_id
+      WHERE c.item_id = ? AND EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id)
+      ORDER BY c.updated_at DESC`).all(req.user.id, item.id);
+  res.render('item', { title: item.title, item, manage, bookings, mine, requests, myConversation, conversations, error: /^err\.\w+$/.test(req.query.error || '') ? req.query.error : null, wide: true });
 });
 
 router.get('/items/:id/edit', requireAuth, (req, res) => {
@@ -156,8 +166,12 @@ router.post('/items/:id/delete', requireAuth, async (req, res) => {
     flash(req, 'error', req.t('flash.item_out'));
     return res.redirect('/items/' + item.id);
   }
+  // Pickup/return photos go with the loans (ON DELETE CASCADE), so collect their files first.
+  const loanPhotos = db.prepare(`SELECT p.photo_key FROM loan_photos p JOIN loans l ON l.id = p.loan_id
+    WHERE l.item_id = ?`).all(item.id);
   db.prepare('DELETE FROM items WHERE id = ?').run(item.id);
   await deletePhoto(item.photo_key);
+  for (const p of loanPhotos) await deletePhoto(p.photo_key);
   flash(req, 'ok', req.t('flash.item_removed', { title: item.title }));
   res.redirect(req.get('Referer')?.includes('/admin') ? '/admin' : '/me');
 });

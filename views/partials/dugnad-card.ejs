@@ -1,0 +1,40 @@
+<%# One event in a list. Expects `e` (event row, with my_status) and optionally `action` ({ key, href }). %>
+<% const lab = dn.registrationLabel(e, e.my_status); const left = dn.spotsLeft(e); %>
+<li class="dugnad-item">
+  <a href="/dugnad/<%= e.id %>" class="dugnad-when" aria-label="<%= e.title %>">
+    <% if (e.cover_photo_key) { %><img src="/photos/<%= e.cover_photo_key %>" alt="" loading="lazy">
+    <% } else if (e.event_date) { %><strong><%= fmtDate(e.event_date) %></strong><span><%= e.start_time || '' %></span>
+    <% } else { %><span aria-hidden="true"><%= dn.catEmoji(e.category) %></span><% } %>
+  </a>
+  <div class="grow">
+    <div class="dugnad-head">
+      <a href="/dugnad/<%= e.id %>" class="dugnad-name"><strong><%= e.title %></strong></a>
+      <% if (e.status === 'draft') { %><span class="badge badge-pending"><%= t('dugnad.status.draft') %></span><% } %>
+      <% if (e.visibility === 'private') { %><span class="badge" title="<%= t('dugnad.vis_private') %>">🔒 <%= t('dugnad.private') %></span><% } %>
+    </div>
+    <div class="small muted">
+      <%= dn.catEmoji(e.category) %> <%= t('dugnad.cat.' + e.category) %>
+      <% if (e.event_date) { %> · 📅 <%= fmtDate(e.event_date) %><%= e.start_time ? ' ' + e.start_time + (e.end_time ? '–' + e.end_time : '') : '' %><% } %>
+      <% if (e.location_name) { %> · 📍 <%= e.location_name %><% } %>
+      <% if (e.hood_name) { %> · <%= e.hood_name %><% } %>
+    </div>
+    <div class="small muted"><%= t('dugnad.hosted_by', { name: e.host_name }) %></div>
+    <% if (e.description) { %><p class="small dugnad-desc"><%= e.description %></p><% } %>
+    <div class="small dugnad-spots">
+      <% if (e.status !== 'draft') { %>
+        <span><%= e.max_participants ? t('dugnad.registered', { n: e.registered, total: e.max_participants }) : t('dugnad.registered_open', { n: e.registered }) %></span>
+        <% if (e.registration_required && e.status === 'published' && left !== null) { %>
+          <span class="badge <%= left ? 'badge-ok' : 'badge-overdue' %>"><%= left ? t('dugnad.spots_left', { n: left }) : t('dugnad.full_badge') %></span>
+        <% } %>
+        <span class="badge badge-<%= lab.tone || 'x' %>"><%= t('dugnad.reg.' + lab.key) %></span>
+      <% } %>
+    </div>
+  </div>
+  <div class="dugnad-actions">
+    <% if (typeof action !== 'undefined' && action) { %>
+      <a href="<%= action.href %>" class="btn btn-primary btn-sm"><%= t(action.key) %></a>
+    <% } else { %>
+      <a href="/dugnad/<%= e.id %>" class="btn btn-sm"><%= t('dugnad.view') %></a>
+    <% } %>
+  </div>
+</li>

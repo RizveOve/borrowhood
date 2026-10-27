@@ -1,0 +1,35 @@
+<%# Equipment fields. Expects `r` (empty object for a new one) and `tasks`.
+    Optional: noTask hides the related-task choice; request shows description and instructions separately (community requests). %>
+<% const asRequest = typeof request !== 'undefined' && request; const hideTask = typeof noTask !== 'undefined' && noTask; %>
+<div class="split">
+  <label class="field"><span><%= t('dugnad.equipment_name') %></span>
+    <input name="equipment_name" value="<%= r.equipment_name || '' %>" maxlength="60" required placeholder="<%= t('dugnad.equipment_name_ph') %>"></label>
+  <label class="field"><span><%= t('dugnad.quantity') %></span>
+    <input type="number" name="quantity_needed" value="<%= r.quantity_needed || 1 %>" min="1" max="999" inputmode="numeric" required></label>
+</div>
+<div class="split">
+  <label class="field"><span><%= t('dugnad.importance') %></span>
+    <select name="essential">
+      <option value="essential" <%= r.essential === 0 ? '' : 'selected' %>><%= t('dugnad.essential') %></option>
+      <option value="optional" <%= r.essential === 0 ? 'selected' : '' %>><%= t('dugnad.optional') %></option>
+    </select></label>
+  <% if (!hideTask) { %>
+  <label class="field"><span><%= t('dugnad.related_task') %> <em><%= t('common.optional') %></em></span>
+    <select name="task_id">
+      <option value=""><%= t('dugnad.no_task') %></option>
+      <% tasks.forEach(tk => { %><option value="<%= tk.id %>" <%= r.task_id === tk.id ? 'selected' : '' %>><%= tk.title %></option><% }) %>
+    </select></label>
+  <% } %>
+</div>
+<div class="split">
+  <label class="field"><span><%= t('dugnad.needed_from') %> <em><%= t('common.optional') %></em></span>
+    <input type="date" name="needed_from" value="<%= r.needed_from || '' %>"></label>
+  <label class="field"><span><%= t('dugnad.needed_until') %> <em><%= t('common.optional') %></em></span>
+    <input type="date" name="needed_until" value="<%= r.needed_until || '' %>"></label>
+</div>
+<label class="field"><span><%= t(asRequest ? 'dugnad.f_description' : 'dugnad.instructions') %> <em><%= t('common.optional') %></em></span>
+  <input name="description" value="<%= r.description || '' %>" maxlength="300"></label>
+<% if (asRequest) { %>
+<label class="field"><span><%= t('dugnad.instructions') %> <em><%= t('common.optional') %></em></span>
+  <input name="instructions" value="<%= r.instructions || '' %>" maxlength="300"></label>
+<% } %>

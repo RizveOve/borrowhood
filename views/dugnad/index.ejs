@@ -1,0 +1,70 @@
+<%- include('../partials/top') %>
+<div class="dugnad">
+  <section class="dugnad-intro">
+    <p class="eyebrow"><%= t('dugnad.eyebrow') %></p>
+    <h1><%= t('dugnad.heading') %></h1>
+    <p class="lead"><%= t('dugnad.lead') %></p>
+    <p class="muted"><%= t('dugnad.text') %></p>
+
+    <div class="dugnad-photos">
+      <figure><img src="/stock/dugnad-2.jpg" alt="<%= t('dugnad.alt1') %>" loading="lazy"><figcaption><%= t('dugnad.cap1') %></figcaption></figure>
+      <figure><img src="/stock/dugnad-3.jpg" alt="<%= t('dugnad.alt2') %>" loading="lazy"><figcaption><%= t('dugnad.cap2') %></figcaption></figure>
+      <figure><img src="/stock/dugnad-1.jpg" alt="<%= t('dugnad.alt3') %>" loading="lazy"><figcaption><%= t('dugnad.cap3') %></figcaption></figure>
+    </div>
+    <p class="credit"><%= t('dugnad.credit') %> <a href="https://commons.wikimedia.org/wiki/Category:Talkoot" rel="noopener">Wikimedia Commons</a>.</p>
+
+    <% if (!user) { %>
+      <div class="card card-soft">
+        <p class="mb0"><strong><%= t('dugnad.login_title') %></strong></p>
+        <p class="small muted"><%= t('dugnad.login_text') %></p>
+        <a href="/login?next=%2Fdugnad" class="btn btn-primary"><%= t('auth.login') %></a>
+        <a href="/signup" class="btn"><%= t('auth.signup') %></a>
+      </div>
+    <% } else { %>
+      <div class="dugnad-cta">
+        <a href="#list" class="btn"><%= t('dugnad.explore') %></a>
+        <a href="/dugnad/create" class="btn btn-primary"><%= t('dugnad.create') %></a>
+        <a href="/dugnad/my-events" class="btn"><%= t('dugnad.my_title') %></a>
+      </div>
+    <% } %>
+  </section>
+
+  <% if (user) { %>
+  <section class="dugnad-main">
+    <h2 id="list"><%= t('dugnad.explore') %></h2>
+    <form method="get" action="/dugnad#list" class="filter-row dugnad-filters" data-autosubmit role="search">
+      <label class="field"><span class="sr-only"><%= t('dugnad.search') %></span>
+        <input type="search" name="q" value="<%= f.q %>" maxlength="80" placeholder="<%= t('dugnad.search_ph') %>"></label>
+      <label class="field"><span class="sr-only"><%= t('dugnad.filter') %></span>
+        <select name="filter">
+          <% FILTERS.forEach(k => { %><option value="<%= k %>" <%= f.filter === k ? 'selected' : '' %>><%= t('dugnad.filter.' + k) %></option><% }) %>
+        </select></label>
+      <button class="btn js-hide"><%= t('dugnad.apply') %></button>
+    </form>
+
+    <% if (!hasHood) { %>
+      <div class="card card-soft"><p class="mb0"><strong><%= t('dugnad.need_hood') %></strong></p>
+        <a href="/neighbourhood" class="btn btn-primary"><%= t('hood.title') %></a></div>
+    <% } %>
+
+    <% if (!events.length) { %>
+      <div class="card empty" role="status">
+        <% if (f.q || f.filter !== 'upcoming') { %>
+          <p class="mb0"><strong><%= t('dugnad.no_results') %></strong></p>
+          <p class="muted small"><%= t('dugnad.no_results_text') %></p>
+          <a href="/dugnad#list" class="btn"><%= t('dugnad.clear') %></a>
+        <% } else { %>
+          <p class="mb0"><strong><%= t('dugnad.empty') %></strong></p>
+          <p class="muted small"><%= t('dugnad.empty_text') %></p>
+          <a href="/dugnad/create" class="btn btn-primary"><%= t('dugnad.create') %></a>
+        <% } %>
+      </div>
+    <% } else { %>
+      <ul class="list dugnad-list">
+        <% events.forEach(e => { %><%- include('../partials/dugnad-card', { e }) %><% }) %>
+      </ul>
+    <% } %>
+  </section>
+  <% } %>
+</div>
+<%- include('../partials/bottom') %>
