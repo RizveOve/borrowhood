@@ -1,0 +1,13 @@
+<%# Edit form for one equipment requirement. Expects r, tasks, action, next, submit and withStatus. %>
+<form method="post" action="<%= action %>" class="form task-form">
+  <%- include('dugnad-req-fields', { r, tasks }) %>
+  <% if (withStatus) { %>
+    <label class="field"><span><%= t('dugnad.req_state') %></span>
+      <select name="status">
+        <option value="needed" <%= r.status === 'needed' ? 'selected' : '' %>><%= t('dugnad.req.needed') %></option>
+        <option value="no_longer_needed" <%= r.status === 'no_longer_needed' ? 'selected' : '' %>><%= t('dugnad.req.no_longer_needed') %></option>
+      </select></label>
+  <% } %>
+  <input type="hidden" name="next" value="<%= next %>">
+  <button class="btn btn-primary btn-sm"><%= submit %></button>
+</form>

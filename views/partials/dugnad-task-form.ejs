@@ -1,0 +1,16 @@
+<%# Edit form for one task. Expects tk, action, next, submit and withStatus. %>
+<form method="post" action="<%= action %>" class="form task-form">
+  <%- include('dugnad-task-fields', { tk }) %>
+  <% if (withStatus) { %>
+    <div class="split">
+      <label class="field"><span><%= t('dugnad.task_status') %></span>
+        <select name="status">
+          <% dn.TASK_STATUSES.forEach(s => { %><option value="<%= s %>" <%= tk.status === s ? 'selected' : '' %>><%= t('dugnad.task_st.' + s) %></option><% }) %>
+        </select></label>
+      <label class="field"><span><%= t('dugnad.task_notes') %> <em><%= t('common.optional') %></em></span>
+        <input name="notes" value="<%= tk.notes || '' %>" maxlength="500"></label>
+    </div>
+  <% } %>
+  <input type="hidden" name="next" value="<%= next %>">
+  <button class="btn btn-primary btn-sm"><%= submit %></button>
+</form>

@@ -27,6 +27,7 @@
             <% if (tab === 'lending') { %><%= l.borrower_name %><%= l.borrower_flat ? ' (' + l.borrower_flat + ')' : '' %>
             <% } else { %><%= l.is_org ? 'BorrowHood' : l.owner_name %><% } %>
           </div>
+          <% if (l.dugnad) { %><div class="small">🤝 <a href="/dugnad/<%= l.dugnad.id %>"><%= t('dugnad.for_loan', { title: l.dugnad.title }) %></a></div><% } %>
           <% if (l.message && l.status === 'pending' && tab === 'lending') { %><div class="quote"><%= l.message %></div><% } %>
           <% if (l.status === 'approved') { %>
             <div class="small contact">

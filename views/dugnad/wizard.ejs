@@ -1,0 +1,274 @@
+<%- include('../partials/top') %>
+<% const g = (k, d = '') => (v && v[k] !== null && v[k] !== undefined ? v[k] : d);
+   const id = ev ? ev.id : null;
+   const action = step === 1 && !ev ? '/dugnad/create' : `/dugnad/${id}/edit/${step}`;
+   const published = ev && ev.status === 'published';
+   const stepNames = ['basics', 'when', 'people', 'tasks', 'equipment', 'review']; %>
+<div class="dugnad-page wizard">
+  <a href="<%= ev ? '/dugnad/' + id + (published ? '/manage' : '') : '/dugnad' %>" class="back">← <%= ev && published ? t('dugnad.manage') : t('dugnad.title') %></a>
+  <h1><%= ev ? (published ? t('dugnad.edit_title') : t('dugnad.draft_title')) : t('dugnad.create') %></h1>
+  <% if (ev) { %><p class="muted mb0"><strong><%= ev.title %></strong></p><% } %>
+
+  <ol class="steps" aria-label="<%= t('dugnad.steps') %>">
+    <% stepNames.forEach((n, i) => { const on = i + 1 === step; %>
+      <li class="<%= on ? 'on' : '' %>" <%- on ? 'aria-current="step"' : '' %>>
+        <% if (ev && !on) { %><a href="/dugnad/<%= id %>/edit/<%= i + 1 %>"><span class="n"><%= i + 1 %></span><span class="l"><%= t('dugnad.step.' + n) %></span></a>
+        <% } else { %><span class="n"><%= i + 1 %></span><span class="l"><%= t('dugnad.step.' + n) %></span><% } %>
+      </li>
+    <% }) %>
+  </ol>
+
+  <% if (error) { %><div class="flash flash-error" role="alert"><%= error %></div><% } %>
+
+  <%# ---------- Step 1: basics ---------- %>
+  <% if (step === 1) { %>
+  <form method="post" action="<%= action %>" enctype="multipart/form-data" class="card form" novalidate>
+    <h2><%= t('dugnad.step.basics') %></h2>
+    <label class="field"><span><%= t('dugnad.f_title') %></span>
+      <input name="title" value="<%= g('title') %>" placeholder="<%= t('dugnad.f_title_ph') %>" maxlength="80" required></label>
+    <label class="field"><span><%= t('dugnad.f_host') %></span>
+      <input name="host_name" value="<%= g('host_name') %>" autocomplete="name" maxlength="60" required></label>
+    <label class="field"><span><%= t('dugnad.f_description') %> <em><%= t('common.optional') %></em></span>
+      <textarea name="description" rows="4" maxlength="2000" placeholder="<%= t('dugnad.f_description_ph') %>"><%= g('description') %></textarea></label>
+    <label class="field"><span><%= t('dugnad.f_category') %></span>
+      <select name="category" required>
+        <% CATEGORIES.forEach(c => { %><option value="<%= c.key %>" <%= g('category') === c.key ? 'selected' : '' %>><%= c.emoji %> <%= t('dugnad.cat.' + c.key) %></option><% }) %>
+      </select></label>
+
+    <div class="field">
+      <span><%= t('dugnad.f_cover') %> <em><%= t('common.optional') %></em></span>
+      <label class="photo-pick">
+        <input type="file" name="cover" accept="image/*" data-photo>
+        <span class="photo-preview" data-preview>
+          <% if (g('cover_photo_key')) { %><img src="/photos/<%= g('cover_photo_key') %>" alt="">
+          <% } else { %><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8a2 2 0 0 1 2-2h2l2-2h6l2 2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <span><%= t('form.add_photo') %></span><% } %>
+        </span>
+      </label>
+      <% if (g('cover_photo_key')) { %><label class="check"><input type="checkbox" name="remove_cover" value="1"> <%= t('dugnad.remove_cover') %></label><% } %>
+    </div>
+
+    <% if (typeof hoods !== 'undefined') { %>
+      <label class="field"><span><%= t('dugnad.f_hood') %></span>
+        <select name="neighbourhood_id">
+          <option value=""><%= t('dugnad.all_hoods') %></option>
+          <% hoods.forEach(h => { %><option value="<%= h.id %>" <%= String(g('neighbourhood_id')) === String(h.id) ? 'selected' : '' %>><%= h.name %></option><% }) %>
+        </select></label>
+    <% } else { %>
+      <p class="small muted mb0"><strong><%= t('dugnad.f_hood') %>:</strong> <%= ev ? (ev.hood_name || t('dugnad.all_hoods')) : user.hood_name %></p>
+    <% } %>
+
+    <fieldset class="topics">
+      <legend class="field-label"><%= t('dugnad.f_visibility') %></legend>
+      <label class="topic"><input type="radio" name="visibility" value="hood" <%= g('visibility', 'hood') !== 'private' ? 'checked' : '' %>><span><%= t('dugnad.vis_hood') %></span></label>
+      <label class="topic"><input type="radio" name="visibility" value="private" <%= g('visibility') === 'private' ? 'checked' : '' %>><span><%= t('dugnad.vis_private') %></span></label>
+      <p class="tiny muted"><%= t('dugnad.vis_help') %></p>
+    </fieldset>
+
+    <div class="wizard-nav">
+      <button class="btn btn-primary" name="go" value="next"><%= t('dugnad.next') %></button>
+      <% if (ev) { %><button class="btn" name="go" value="save"><%= t('dugnad.save') %></button><% } %>
+    </div>
+  </form>
+
+  <%# ---------- Step 2: date and location ---------- %>
+  <% } else if (step === 2) { %>
+  <form method="post" action="<%= action %>" class="card form" novalidate>
+    <h2><%= t('dugnad.step.when') %></h2>
+    <div class="split">
+      <label class="field"><span><%= t('dugnad.f_date') %></span>
+        <input type="date" name="event_date" value="<%= g('event_date') %>" min="<%= today() %>"></label>
+      <label class="field"><span><%= t('dugnad.f_start') %></span>
+        <input type="time" name="start_time" value="<%= g('start_time') %>"></label>
+    </div>
+    <div class="split">
+      <label class="field"><span><%= t('dugnad.f_end') %> <em><%= t('common.optional') %></em></span>
+        <input type="time" name="end_time" value="<%= g('end_time') %>"></label>
+      <label class="field"><span><%= t('dugnad.f_duration') %> <em><%= t('common.optional') %></em></span>
+        <input type="number" name="duration_minutes" value="<%= g('duration_minutes') %>" min="15" max="1440" step="15" inputmode="numeric" placeholder="180"></label>
+    </div>
+    <p class="tiny muted"><%= t('dugnad.f_time_help') %></p>
+    <label class="field"><span><%= t('dugnad.f_place') %></span>
+      <input name="location_name" value="<%= g('location_name') %>" maxlength="80" placeholder="<%= t('dugnad.f_place_ph') %>"></label>
+    <label class="field"><span><%= t('dugnad.f_address') %> <em><%= t('common.optional') %></em></span>
+      <input name="location_address" value="<%= g('location_address') %>" maxlength="160" autocomplete="street-address"></label>
+    <p class="tiny muted"><%= t('dugnad.f_address_help') %></p>
+    <label class="field"><span><%= t('dugnad.f_map') %> <em><%= t('common.optional') %></em></span>
+      <input type="url" name="location_url" value="<%= g('location_url') %>" maxlength="300" inputmode="url" placeholder="https://"></label>
+    <div class="split">
+      <label class="field"><span><%= t('dugnad.f_deadline') %> <em><%= t('common.optional') %></em></span>
+        <input type="date" name="registration_deadline" value="<%= g('registration_deadline') %>" min="<%= today() %>"></label>
+      <label class="field"><span><%= t('dugnad.f_spots') %> <em><%= t('common.optional') %></em></span>
+        <input type="number" name="max_participants" value="<%= g('max_participants') %>" min="1" max="500" inputmode="numeric" placeholder="∞"></label>
+    </div>
+    <p class="tiny muted mb0"><%= t('dugnad.f_spots_help') %></p>
+    <div class="wizard-nav">
+      <button class="btn btn-primary" name="go" value="next"><%= t('dugnad.next') %></button>
+      <button class="btn" name="go" value="save"><%= t('dugnad.save') %></button>
+      <button class="btn btn-ghost" name="go" value="back"><%= t('dugnad.back') %></button>
+    </div>
+  </form>
+
+  <%# ---------- Step 3: participation ---------- %>
+  <% } else if (step === 3) { %>
+  <form method="post" action="<%= action %>" class="card form">
+    <h2><%= t('dugnad.step.people') %></h2>
+    <p class="muted small"><%= t('dugnad.rules_intro') %></p>
+    <label class="check"><input type="checkbox" name="registration_required" value="1" <%= ev.registration_required ? 'checked' : '' %>>
+      <span><strong><%= t('dugnad.rule_required') %></strong><br><span class="small muted"><%= t('dugnad.rule_required_help') %></span></span></label>
+    <label class="check"><input type="checkbox" name="approval_required" value="1" <%= ev.approval_required ? 'checked' : '' %>>
+      <span><strong><%= t('dugnad.rule_approval') %></strong><br><span class="small muted"><%= t('dugnad.rule_approval_help') %></span></span></label>
+    <label class="check"><input type="checkbox" name="allow_leave" value="1" <%= ev.allow_leave ? 'checked' : '' %>>
+      <span><strong><%= t('dugnad.rule_leave') %></strong><br><span class="small muted"><%= t('dugnad.rule_leave_help') %></span></span></label>
+
+    <fieldset>
+      <legend class="field-label"><%= t('dugnad.invite_title') %></legend>
+      <p class="small muted"><%= ev.visibility === 'private' ? t('dugnad.invite_private') : t('dugnad.invite_help') %></p>
+      <% if (!members.length) { %><p class="small muted"><%= t('dugnad.invite_none') %></p>
+      <% } else { %>
+        <div class="invite-list">
+          <% members.forEach(m => { %>
+            <label class="check"><input type="checkbox" name="invites" value="<%= m.id %>" <%= invited.has(m.id) ? 'checked' : '' %>>
+              <span><%= m.name %><%= m.flat ? ' · ' + m.flat : '' %></span></label>
+          <% }) %>
+        </div>
+      <% } %>
+    </fieldset>
+    <div class="wizard-nav">
+      <button class="btn btn-primary" name="go" value="next"><%= t('dugnad.next') %></button>
+      <button class="btn" name="go" value="save"><%= t('dugnad.save') %></button>
+      <button class="btn btn-ghost" name="go" value="back"><%= t('dugnad.back') %></button>
+    </div>
+  </form>
+
+  <%# ---------- Step 4: tasks ---------- %>
+  <% } else if (step === 4) { %>
+  <section class="card">
+    <h2><%= t('dugnad.step.tasks') %></h2>
+    <p class="muted small"><%= t('dugnad.tasks_intro') %></p>
+    <% if (!tasks.length) { %><p class="muted" role="status"><%= t('dugnad.no_tasks') %></p><% } %>
+    <ul class="list task-edit-list">
+      <% tasks.forEach((tk, i) => { const people = tk.assigned.length + tk.pending.length; %>
+        <li class="task-edit">
+          <details>
+            <summary>
+              <span class="grow"><strong><%= tk.title %></strong>
+                <span class="small muted"> · <%= t('dugnad.volunteers_of', { n: tk.assigned.length, total: tk.volunteers_needed }) %> · <%= t('dugnad.priority.' + tk.priority) %></span></span>
+            </summary>
+            <%- include('../partials/dugnad-task-form', { tk, action: `/dugnad/${id}/tasks/${tk.id}/edit`, next: 'edit4', withStatus: true, submit: t('dugnad.save') }) %>
+          </details>
+          <div class="task-tools">
+            <form method="post" action="/dugnad/<%= id %>/tasks/<%= tk.id %>/move"><input type="hidden" name="next" value="edit4"><input type="hidden" name="dir" value="up">
+              <button class="btn btn-sm btn-ghost" <%= i === 0 ? 'disabled' : '' %> aria-label="<%= t('dugnad.move_up') %>">↑</button></form>
+            <form method="post" action="/dugnad/<%= id %>/tasks/<%= tk.id %>/move"><input type="hidden" name="next" value="edit4"><input type="hidden" name="dir" value="down">
+              <button class="btn btn-sm btn-ghost" <%= i === tasks.length - 1 ? 'disabled' : '' %> aria-label="<%= t('dugnad.move_down') %>">↓</button></form>
+            <form method="post" action="/dugnad/<%= id %>/tasks/<%= tk.id %>/delete" <%- people ? `data-confirm="${t('dugnad.confirm_task_delete', { n: people })}"` : '' %>>
+              <input type="hidden" name="next" value="edit4"><% if (people) { %><input type="hidden" name="confirm" value="1"><% } %>
+              <button class="btn btn-sm btn-ghost danger-text"><%= t('common.delete') %></button></form>
+          </div>
+        </li>
+      <% }) %>
+    </ul>
+  </section>
+  <form method="post" action="/dugnad/<%= id %>/tasks" class="card form">
+    <h2><%= t('dugnad.add_task') %></h2>
+    <p class="small muted mb0"><%= t('dugnad.task_examples') %></p>
+    <%- include('../partials/dugnad-task-fields', { tk: {} }) %>
+    <input type="hidden" name="next" value="edit4">
+    <button class="btn btn-block"><%= t('dugnad.add_task') %></button>
+  </form>
+  <div class="wizard-nav">
+    <a class="btn btn-primary" href="/dugnad/<%= id %>/edit/5"><%= t('dugnad.next') %></a>
+    <a class="btn btn-ghost" href="/dugnad/<%= id %>/edit/3"><%= t('dugnad.back') %></a>
+  </div>
+
+  <%# ---------- Step 5: equipment ---------- %>
+  <% } else if (step === 5) { %>
+  <section class="card">
+    <h2><%= t('dugnad.step.equipment') %></h2>
+    <p class="muted small"><%= t('dugnad.equipment_intro') %></p>
+    <form method="post" action="/dugnad/<%= id %>/equipment/template" class="row template-row">
+      <input type="hidden" name="next" value="edit5">
+      <label class="grow field"><span class="sr-only"><%= t('dugnad.template_pick') %></span>
+        <select name="category" required>
+          <option value="" disabled selected><%= t('dugnad.template_pick') %></option>
+          <% templates.forEach(tp => { %><option value="<%= tp.category %>"><%= lang === 'nb' ? tp.name_nb : tp.name %></option><% }) %>
+        </select></label>
+      <button class="btn"><%= t('dugnad.template_add') %></button>
+    </form>
+    <p class="tiny muted"><%= t('dugnad.template_help') %></p>
+
+    <% if (!reqs.length) { %><p class="muted" role="status"><%= t('dugnad.no_equipment') %></p><% } %>
+    <ul class="list req-list">
+      <% reqs.forEach(r => { const live = r.links.some(l => ['pending', 'approved', 'active'].includes(l.state)); %>
+        <li class="task-edit">
+          <details>
+            <summary>
+              <span class="grow"><strong><%= r.equipment_name %></strong> × <%= r.quantity_needed %>
+                <span class="small muted"> · <%= t(r.essential ? 'dugnad.essential' : 'dugnad.optional') %></span>
+                <span class="badge badge-<%= ({ approved: 'ok', partial: 'warn', pending: 'warn', unavailable: 'overdue' })[r.state] || 'x' %>"><%= t('dugnad.req.' + r.state) %></span></span>
+            </summary>
+            <%- include('../partials/dugnad-req-form', { r, tasks, action: `/dugnad/${id}/equipment/${r.id}/edit`, next: 'edit5', withStatus: true, submit: t('dugnad.save') }) %>
+          </details>
+          <div class="task-tools">
+            <form method="post" action="/dugnad/<%= id %>/equipment/<%= r.id %>/delete" <%- live ? `data-confirm="${t('dugnad.confirm_req_delete')}"` : '' %>>
+              <input type="hidden" name="next" value="edit5"><% if (live) { %><input type="hidden" name="confirm" value="1"><% } %>
+              <button class="btn btn-sm btn-ghost danger-text"><%= t('common.delete') %></button></form>
+          </div>
+        </li>
+      <% }) %>
+    </ul>
+  </section>
+  <form method="post" action="/dugnad/<%= id %>/equipment" class="card form">
+    <h2><%= t('dugnad.add_equipment') %></h2>
+    <%- include('../partials/dugnad-req-fields', { r: {}, tasks }) %>
+    <input type="hidden" name="next" value="edit5">
+    <button class="btn btn-block"><%= t('dugnad.add_equipment') %></button>
+  </form>
+  <p class="small muted"><%= t('dugnad.find_later') %></p>
+  <div class="wizard-nav">
+    <a class="btn btn-primary" href="/dugnad/<%= id %>/edit/6"><%= t('dugnad.next') %></a>
+    <a class="btn btn-ghost" href="/dugnad/<%= id %>/edit/4"><%= t('dugnad.back') %></a>
+  </div>
+
+  <%# ---------- Step 6: review ---------- %>
+  <% } else { %>
+  <section class="card review">
+    <h2><%= t('dugnad.step.review') %></h2>
+    <% if (problem) { %><div class="flash flash-error" role="alert"><%= t('dugnad.not_ready') %>: <%= t(problem) %></div><% } %>
+    <dl class="facts">
+      <dt><%= t('dugnad.f_title') %></dt><dd><a href="/dugnad/<%= id %>/edit/1"><%= ev.title %></a> · <%= dn.catEmoji(ev.category) %> <%= t('dugnad.cat.' + ev.category) %></dd>
+      <dt><%= t('dugnad.f_host') %></dt><dd><%= ev.host_name %></dd>
+      <dt><%= t('dugnad.f_visibility') %></dt><dd><%= ev.visibility === 'private' ? t('dugnad.vis_private') : t('dugnad.vis_hood') %> · <%= ev.hood_name || t('dugnad.all_hoods') %></dd>
+      <dt><%= t('dugnad.step.when') %></dt>
+      <dd><a href="/dugnad/<%= id %>/edit/2"><%= ev.event_date ? fmtDate(ev.event_date) + (ev.start_time ? ' ' + ev.start_time : '') + (ev.end_time ? '–' + ev.end_time : '') : t('dugnad.not_set') %></a>
+        <br><%= ev.location_name || t('dugnad.not_set') %><%= ev.location_address ? ', ' + ev.location_address : '' %></dd>
+      <dt><%= t('dugnad.f_deadline') %></dt><dd><%= ev.registration_deadline ? fmtDate(ev.registration_deadline) : t('dugnad.none') %></dd>
+      <dt><%= t('dugnad.step.people') %></dt>
+      <dd><a href="/dugnad/<%= id %>/edit/3"><%= ev.registration_required ? (ev.approval_required ? t('dugnad.sum_approval') : t('dugnad.sum_open')) : t('dugnad.sum_none') %></a>
+        · <%= ev.max_participants ? t('dugnad.sum_max', { n: ev.max_participants }) : t('dugnad.sum_nomax') %>
+        · <%= ev.allow_leave ? t('dugnad.sum_leave') : t('dugnad.sum_noleave') %>
+        <% if (invitedCount) { %> · <%= t('dugnad.sum_invited', { n: invitedCount }) %><% } %></dd>
+      <dt><%= t('dugnad.step.tasks') %></dt>
+      <dd><a href="/dugnad/<%= id %>/edit/4"><%= t('dugnad.sum_tasks', { n: tasks.length }) %></a>
+        <% if (tasks.length) { %><ul class="plain"><% tasks.forEach(tk => { %><li><%= tk.title %> <span class="muted small">(<%= t('dugnad.volunteers_needed_n', { n: tk.volunteers_needed }) %>)</span></li><% }) %></ul><% } %></dd>
+      <dt><%= t('dugnad.step.equipment') %></dt>
+      <dd><a href="/dugnad/<%= id %>/edit/5"><%= t('dugnad.sum_equipment', { n: reqs.length }) %></a>
+        <% if (reqs.length) { %><ul class="plain"><% reqs.forEach(r => { %><li><%= r.equipment_name %> × <%= r.quantity_needed %> <span class="muted small">(<%= t(r.essential ? 'dugnad.essential' : 'dugnad.optional') %>)</span></li><% }) %></ul><% } %></dd>
+    </dl>
+  </section>
+  <div class="wizard-nav">
+    <% if (ev.status === 'draft') { %>
+      <form method="post" action="/dugnad/<%= id %>/publish"><button class="btn btn-primary" <%= problem ? 'disabled' : '' %>><%= t('dugnad.publish') %></button></form>
+      <a class="btn" href="/dugnad/my-events"><%= t('dugnad.save_draft') %></a>
+    <% } else { %>
+      <a class="btn btn-primary" href="/dugnad/<%= id %>"><%= t('dugnad.done') %></a>
+    <% } %>
+    <a class="btn btn-ghost" href="/dugnad/<%= id %>/edit/5"><%= t('dugnad.back') %></a>
+  </div>
+  <% if (ev.status === 'draft') { %>
+    <form method="post" action="/dugnad/<%= id %>/delete" data-confirm="<%= t('dugnad.confirm_delete_draft') %>"><button class="btn btn-ghost danger-text"><%= t('dugnad.delete_draft') %></button></form>
+  <% } %>
+  <% } %>
+</div>
+<%- include('../partials/bottom') %>

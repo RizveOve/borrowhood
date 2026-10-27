@@ -1,0 +1,37 @@
+<%- include('../partials/top') %>
+<a href="/dugnad/<%= ev.id %>/manage" class="back">← <%= t('dugnad.manage') %></a>
+<h1><%= t('dugnad.complete_title') %></h1>
+<p class="muted"><strong><%= ev.title %></strong> · <%= ev.event_date ? fmtDate(ev.event_date) : '' %></p>
+<% if (error) { %><div class="flash flash-error" role="alert"><%= error %></div><% } %>
+<section class="card">
+  <h2><%= t('dugnad.complete_summary') %></h2>
+  <ul class="plain">
+    <li><%= t('dugnad.registered', { n: ev.registered, total: ev.max_participants || '∞' }) %></li>
+    <li><%= t('dugnad.complete_attended', { n: attended }) %></li>
+    <li><%= t('dugnad.sum_tasks', { n: tasks.length }) %>: <%= t('dugnad.complete_done', { n: tasks.filter(x => x.status === 'completed').length }) %></li>
+  </ul>
+  <p class="small muted mb0"><%= t('dugnad.loans_note') %></p>
+</section>
+<form method="post" action="/dugnad/<%= ev.id %>/complete" class="card form">
+  <% if (future) { %><div class="flash" role="status"><%= t('dugnad.complete_future', { date: fmtDate(ev.event_date) }) %></div><% } %>
+  <% if (outstanding.length) { %>
+    <div class="flash flash-error" role="status"><strong><%= t('dugnad.outstanding', { n: outstanding.length }) %></strong>
+      <ul class="plain"><% outstanding.forEach(x => { %><li><%= x.title %> <span class="small">(<%= t('dugnad.task_st.' + x.status) %>)</span></li><% }) %></ul></div>
+    <fieldset class="topics">
+      <legend class="field-label"><%= t('dugnad.leftover') %></legend>
+      <label class="topic"><input type="radio" name="leftover" value="keep" checked><span><%= t('dugnad.leftover_keep') %></span></label>
+      <label class="topic"><input type="radio" name="leftover" value="completed"><span><%= t('dugnad.leftover_done') %></span></label>
+      <label class="topic"><input type="radio" name="leftover" value="cancelled"><span><%= t('dugnad.leftover_cancel') %></span></label>
+    </fieldset>
+  <% } %>
+  <label class="field"><span><%= t('dugnad.summary') %> <em><%= t('common.optional') %></em></span>
+    <textarea name="summary" rows="3" maxlength="1000" placeholder="<%= t('dugnad.summary_ph') %>"></textarea></label>
+  <label class="field"><span><%= t('dugnad.work_done') %> <em><%= t('common.optional') %></em></span>
+    <textarea name="notes" rows="3" maxlength="2000"></textarea></label>
+  <% if (outstanding.length || future) { %>
+    <label class="check"><input type="checkbox" name="confirm" value="1" required><span><%= t('dugnad.confirm_complete') %></span></label>
+  <% } %>
+  <p class="tiny muted"><%= t('dugnad.complete_notify') %></p>
+  <button class="btn btn-primary btn-block"><%= t('dugnad.complete_btn') %></button>
+</form>
+<%- include('../partials/bottom') %>
