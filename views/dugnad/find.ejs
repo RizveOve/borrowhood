@@ -1,0 +1,55 @@
+<%- include('../partials/top') %>
+<a href="/dugnad/<%= ev.id %>/manage#equipment" class="back">← <%= t('dugnad.manage') %></a>
+<h1><%= t('dugnad.find_title') %></h1>
+<p class="muted"><%= t('dugnad.find_for', { name: r.equipment_name, n: r.quantity_needed, title: ev.title }) %></p>
+<% if (error) { %><div class="flash flash-error" role="alert"><%= t(error, { n: 30 }) %></div><% } %>
+<form method="get" action="/dugnad/<%= ev.id %>/equipment/<%= r.id %>/find" class="filter-row" role="search">
+  <label class="field"><span class="sr-only"><%= t('dugnad.search') %></span>
+    <input type="search" name="q" value="<%= q %>" maxlength="60"></label>
+  <button class="btn"><%= t('dugnad.search') %></button>
+</form>
+<p class="tiny muted"><%= t('dugnad.find_note') %></p>
+
+<% if (!results.length) { %>
+  <div class="card empty" role="status">
+    <p class="mb0"><strong><%= t('dugnad.no_equipment_found') %></strong></p>
+    <p class="muted small"><%= t('dugnad.no_equipment_found_text') %></p>
+    <a href="/dugnad/<%= ev.id %>/manage#requests" class="btn btn-primary"><%= t('dugnad.ask_neighbours') %></a>
+  </div>
+<% } %>
+<ul class="list find-list">
+  <% results.forEach(it => { %>
+    <li class="card find-item">
+      <div class="row">
+        <a href="/items/<%= it.id %>" class="mini"><%- include('../partials/thumb', { it }) %></a>
+        <div class="grow">
+          <a href="/items/<%= it.id %>"><strong><%= it.title %></strong></a>
+          <div class="small muted"><%= it.is_org ? 'BorrowHood' : (it.mine ? t('item.you') : it.owner_name) %><%= !it.is_org && it.hood_name ? ' · ' + it.hood_name : '' %> · 📍 <%= it.location %></div>
+          <% if (it.description) { %><div class="small muted dugnad-desc"><%= it.description %></div><% } %>
+        </div>
+        <div>
+          <span class="badge <%= it.booked ? 'badge-overdue' : 'badge-ok' %>"><%= it.booked ? t('dugnad.booked_then') : t('dugnad.free_then') %></span>
+          <% if (it.near) { %><br><span class="badge"><%= t('dugnad.in_hood') %></span><% } %>
+        </div>
+      </div>
+      <% if (linked.has(it.id)) { %><p class="small muted mb0"><%= t('dugnad.already_linked') %></p>
+      <% } else if (it.mine) { %>
+        <form method="post" action="/dugnad/<%= ev.id %>/equipment/<%= r.id %>/own"><input type="hidden" name="item_id" value="<%= it.id %>"><input type="hidden" name="next" value="manage#equipment">
+          <button class="btn btn-sm"><%= t('dugnad.use_mine') %></button></form>
+      <% } else if (!it.booked) { %>
+        <details class="inline-details"><summary class="btn btn-primary btn-sm"><%= t('dugnad.request_to_borrow') %></summary>
+          <form method="post" action="/dugnad/<%= ev.id %>/equipment/<%= r.id %>/request" class="form">
+            <input type="hidden" name="item_id" value="<%= it.id %>"><input type="hidden" name="next" value="manage#equipment">
+            <div class="split">
+              <label class="field"><span><%= t('item.from') %></span><input type="date" name="start_date" value="<%= from %>" min="<%= today() %>" required data-start></label>
+              <label class="field"><span><%= t('item.return_by') %></span><input type="date" name="end_date" value="<%= until %>" min="<%= today() %>" required data-end></label>
+            </div>
+            <label class="field"><span><%= t('item.message') %> <em><%= t('common.optional') %></em></span><input name="message" maxlength="300"></label>
+            <p class="tiny muted"><%= t('dugnad.loan_note') %></p>
+            <button class="btn btn-primary btn-sm"><%= t('item.send') %></button>
+          </form></details>
+      <% } %>
+    </li>
+  <% }) %>
+</ul>
+<%- include('../partials/bottom') %>

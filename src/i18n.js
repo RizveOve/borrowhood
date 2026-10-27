@@ -178,27 +178,6 @@ const en = {
   'msg.err_empty': 'Write a message first.',
   'msg.n_new': '{name} sent you a message about "{title}": {preview}', 'msg.mail_new': 'New message from {name} about "{title}"',
 
-  'dugnad.title': 'Dugnad', 'dugnad.eyebrow': 'Norwegian tradition', 'dugnad.heading': 'Many hands make light work.',
-  'dugnad.lead': 'A dugnad is a work day where neighbours get together to look after the place they share.',
-  'dugnad.text': 'Rake the leaves, tidy the courtyard, paint the bike shed, put up the tent for the summer party. Everyone does a little, so nobody has to do a lot, and you usually end up with coffee and a chat afterwards. It is also the easiest way to meet the people in your building.',
-  'dugnad.alt1': 'Neighbours raking leaves in a courtyard', 'dugnad.cap1': 'Raking leaves',
-  'dugnad.alt2': 'Volunteers clearing up next to a skip', 'dugnad.cap2': 'Clearing up the courtyard',
-  'dugnad.alt3': 'People putting up a large tent together', 'dugnad.cap3': 'Putting up the tent',
-  'dugnad.credit': 'Photos of Finnish talkoot, the same idea as dugnad, from',
-  'dugnad.login_title': 'Log in to join a dugnad', 'dugnad.login_text': 'Sign up or log in to see the dugnads in your neighbourhood and to organise your own.',
-  'dugnad.need_hood': 'Join a neighbourhood to organise and see dugnads.',
-  'dugnad.create': 'Create a dugnad', 'dugnad.create_btn': 'Create dugnad',
-  'dugnad.f_title': 'Name', 'dugnad.f_title_ph': 'Autumn clean-up of the courtyard',
-  'dugnad.f_date': 'Date', 'dugnad.f_time': 'Time', 'dugnad.f_host': 'Host name', 'dugnad.f_spots': 'People allowed',
-  'dugnad.f_spots_help': 'The host takes the first spot. Neighbours can sign up until the dugnad is full.',
-  'dugnad.upcoming': 'Upcoming dugnads', 'dugnad.empty': 'No dugnads planned yet.', 'dugnad.empty_text': 'Create the first one above and invite your neighbours.',
-  'dugnad.hosted_by': 'Hosted by {name}', 'dugnad.registered': '{n} of {total} registered',
-  'dugnad.spots_left': '{n} left', 'dugnad.full_badge': 'Full', 'dugnad.youre_in': "You're in", 'dugnad.hosting': 'You host',
-  'dugnad.join': 'Join', 'dugnad.leave': 'Leave', 'dugnad.cancel': 'Cancel', 'dugnad.cancel_confirm': 'Cancel this dugnad for everyone?',
-  'dugnad.created': 'Your dugnad is up. Neighbours can now sign up.', 'dugnad.joined': 'You are signed up for "{title}".',
-  'dugnad.full': 'Sorry, "{title}" just filled up.', 'dugnad.left': 'You left "{title}".', 'dugnad.cancelled': 'Cancelled "{title}".',
-  'dugnad.err_title': 'Give the dugnad a name.', 'dugnad.err_host': 'Enter the host name.', 'dugnad.err_date': 'Choose a date that is today or later.',
-  'dugnad.err_time': 'Choose a time.', 'dugnad.err_spots': 'People allowed must be between {min} and {max}.',
 
   'err.not_found': 'Not found', 'err.not_found_text': "We couldn't find that page.", 'err.server': 'Something went wrong',
   'err.server_text': 'Please try again in a moment.', 'err.forbidden': 'Not allowed', 'err.admins_only': 'Admins only.',
@@ -383,31 +362,14 @@ const nb = {
   'msg.err_empty': 'Skriv en melding først.',
   'msg.n_new': '{name} sendte deg en melding om «{title}»: {preview}', 'msg.mail_new': 'Ny melding fra {name} om «{title}»',
 
-  'dugnad.title': 'Dugnad', 'dugnad.eyebrow': 'Norsk tradisjon', 'dugnad.heading': 'Mange hender gjør arbeidet lett.',
-  'dugnad.lead': 'En dugnad er en arbeidsdag der naboer samles for å ta vare på stedet de deler.',
-  'dugnad.text': 'Raking av løv, rydding i bakgården, maling av sykkelboden, oppsett av teltet til sommerfesten. Alle gjør litt, så ingen må gjøre mye, og som regel ender det med kaffe og en prat. Det er også den enkleste måten å bli kjent med menneskene i bygget.',
-  'dugnad.alt1': 'Naboer som raker løv i en bakgård', 'dugnad.cap1': 'Raking av løv',
-  'dugnad.alt2': 'Frivillige som rydder ved en container', 'dugnad.cap2': 'Rydding i bakgården',
-  'dugnad.alt3': 'Folk som setter opp et stort telt sammen', 'dugnad.cap3': 'Oppsett av telt',
-  'dugnad.credit': 'Bilder av finske talkoot, samme idé som dugnad, fra',
-  'dugnad.login_title': 'Logg inn for å bli med på dugnad', 'dugnad.login_text': 'Registrer deg eller logg inn for å se dugnadene i nabolaget ditt og for å arrangere egne.',
-  'dugnad.need_hood': 'Bli med i et nabolag for å se og arrangere dugnader.',
-  'dugnad.create': 'Opprett en dugnad', 'dugnad.create_btn': 'Opprett dugnad',
-  'dugnad.f_title': 'Navn', 'dugnad.f_title_ph': 'Høstrydding av bakgården',
-  'dugnad.f_date': 'Dato', 'dugnad.f_time': 'Tid', 'dugnad.f_host': 'Navn på vert', 'dugnad.f_spots': 'Antall plasser',
-  'dugnad.f_spots_help': 'Verten tar den første plassen. Naboer kan melde seg på til dugnaden er full.',
-  'dugnad.upcoming': 'Kommende dugnader', 'dugnad.empty': 'Ingen dugnader planlagt ennå.', 'dugnad.empty_text': 'Opprett den første ovenfor og inviter naboene dine.',
-  'dugnad.hosted_by': 'Arrangert av {name}', 'dugnad.registered': '{n} av {total} påmeldt',
-  'dugnad.spots_left': '{n} igjen', 'dugnad.full_badge': 'Full', 'dugnad.youre_in': 'Du er med', 'dugnad.hosting': 'Du er vert',
-  'dugnad.join': 'Bli med', 'dugnad.leave': 'Meld av', 'dugnad.cancel': 'Avlys', 'dugnad.cancel_confirm': 'Avlyse denne dugnaden for alle?',
-  'dugnad.created': 'Dugnaden er opprettet. Naboer kan nå melde seg på.', 'dugnad.joined': 'Du er påmeldt «{title}».',
-  'dugnad.full': 'Beklager, «{title}» ble nettopp full.', 'dugnad.left': 'Du meldte deg av «{title}».', 'dugnad.cancelled': 'Avlyste «{title}».',
-  'dugnad.err_title': 'Gi dugnaden et navn.', 'dugnad.err_host': 'Skriv inn navnet på verten.', 'dugnad.err_date': 'Velg en dato i dag eller senere.',
-  'dugnad.err_time': 'Velg et tidspunkt.', 'dugnad.err_spots': 'Antall plasser må være mellom {min} og {max}.',
 
   'err.not_found': 'Fant ikke siden', 'err.not_found_text': 'Vi fant ikke det du lette etter.', 'err.server': 'Noe gikk galt',
   'err.server_text': 'Prøv igjen om litt.', 'err.forbidden': 'Ikke tillatt', 'err.admins_only': 'Kun for admin.',
 };
+
+// Dugnad texts live in their own file.
+Object.assign(en, require('./i18n-dugnad').en);
+Object.assign(nb, require('./i18n-dugnad').nb);
 
 const DICTS = { en, nb };
 const LANGS = Object.keys(DICTS);

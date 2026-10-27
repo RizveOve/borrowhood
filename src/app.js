@@ -21,7 +21,7 @@ Object.assign(app.locals, {
   fmtDate: util.fmtDate, catEmoji: util.catEmoji, catLabel: util.catLabel,
   CATEGORIES: util.CATEGORIES, HOOD_KINDS: util.HOOD_KINDS, STATE_LABEL: util.STATE_LABEL,
   loanState: util.loanState, photoStep: util.photoStep, today: util.today,
-  navTabs, asset,
+  navTabs, asset, dn: require('./dugnad'),
 });
 
 // Versioned URLs for CSS/JS so browsers pick up changes immediately (they are cached for a day).
@@ -83,6 +83,7 @@ app.use(require('./routes/loans'));
 app.use(require('./routes/account'));
 app.use(require('./routes/contact'));
 app.use(require('./routes/dugnad'));
+app.use(require('./routes/dugnad-work'));
 app.use(require('./routes/messages'));
 app.use('/admin', require('./routes/admin'));
 
