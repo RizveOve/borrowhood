@@ -43,6 +43,7 @@ test('the dynamic Dugnad key families are complete', () => {
     'dugnad.rq.': ['open', 'offers', 'partial', 'fulfilled', 'cancelled'],
     'dugnad.link.': ['own', 'pending', 'approved', 'active', 'returned', 'rejected', 'cancelled'],
     'dugnad.att.': ['attended', 'absent'],
+    'dugnad.pstatus.': ['registered', 'pending', 'waitlisted'],
     'dugnad.filter.': require('../src/dugnad').FILTERS,
     'dugnad.step.': ['basics', 'when', 'people', 'tasks', 'equipment', 'review'],
   };

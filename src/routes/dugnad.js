@@ -109,6 +109,9 @@ async function saveBasics(req, res, ev) {
     id = Number(db.prepare(`INSERT INTO dugnad_events (organizer_id, neighbourhood_id, host_name, title, description, category, visibility, cover_photo_key)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(req.user.id, hood, v.host_name, v.title, v.description || null, v.category, v.visibility, cover).lastInsertRowid);
   }
+  // The equipment such a dugnad usually needs, picked from its name (once per dugnad).
+  const listed = dn.suggestEquipment(dn.getEvent(id), req.lang);
+  if (listed) flash(req, 'ok', req.t('dugnad.auto_added', { n: listed, title: v.title }));
   nav(req, res, id, 1);
 }
 

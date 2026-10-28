@@ -254,7 +254,8 @@ describe('registration', () => {
     await nei.post(`/dugnad/${open}/leave`);
     assert.equal(db.prepare('SELECT registration_status AS s FROM dugnad_participants WHERE event_id = ? AND user_id = ?').get(open, neighbour.id).s, 'withdrawn');
     assert.equal(dn.getEvent(open).registered, 1);
-    // They can come back.
+    // They can come back, and the page offers it again.
+    assert.match((await nei.get(`/dugnad/${open}`)).text, /Join dugnad/);
     await nei.post(`/dugnad/${open}/join`);
     assert.equal(dn.getEvent(open).registered, 2);
 
@@ -286,6 +287,9 @@ describe('registration', () => {
     await org.post(`/dugnad/${id}/participants/${neighbour.id}/remove`);
     assert.equal(participants(id, 'registered').includes(neighbour.id), false);
     assert.match((await nei.follow(await nei.post(`/dugnad/${id}/join`, { next: 'event' }))).text, /closed your sign-up/);
+    const page = (await nei.get(`/dugnad/${id}`)).text;
+    assert.doesNotMatch(page, /Join dugnad/, 'no join button for someone the organiser removed');
+    assert.match(page, /closed your sign-up/);
   });
 
   test('private events respect access restrictions', async () => {
@@ -307,6 +311,9 @@ describe('registration', () => {
     assert.doesNotMatch(page, /maps\.example\.com/);
     assert.doesNotMatch(page, /Olive Organiser<\/span>/);
     assert.match(page, /shown after you sign up/);
+    // Being invited is not enough either: the address is for people who signed up.
+    await org.post(`/dugnad/${id}/edit/3`, { registration_required: '1', allow_leave: '1', invites: String(neighbour.id) });
+    assert.doesNotMatch((await nei.get(`/dugnad/${id}`)).text, /Secret Street 12/);
     await nei.post(`/dugnad/${id}/join`);
     page = (await nei.get(`/dugnad/${id}`)).text;
     assert.match(page, /Secret Street 12/);

@@ -85,7 +85,7 @@ const days = (k) => util.addDays(util.today(), k);
 
 // Creates an event through the wizard, the way a person does, and returns its id.
 async function createEvent(c, { basics = {}, when = {}, rules = {}, publish = true } = {}) {
-  let r = await c.post('/dugnad/create', { title: 'Courtyard day', host_name: 'Hosty', category: 'cleanup', visibility: 'hood', ...basics });
+  let r = await c.post('/dugnad/create', { title: 'Courtyard day', host_name: 'Hosty', category: 'other', visibility: 'hood', ...basics });  // a neutral name: no equipment is suggested
   const id = Number((r.location || '').match(/\/dugnad\/(\d+)\/edit\/2/)?.[1]);
   if (!id) throw new Error('create failed: ' + r.status + ' ' + r.text.slice(0, 200));
   r = await c.post(`/dugnad/${id}/edit/2`, { event_date: days(7), start_time: '10:00', end_time: '12:00', location_name: 'Courtyard', ...when });

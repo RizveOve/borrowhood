@@ -173,6 +173,7 @@ CREATE TABLE IF NOT EXISTS dugnad_events (
   approval_required     INTEGER NOT NULL DEFAULT 0,
   allow_leave           INTEGER NOT NULL DEFAULT 1,
   status                TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'completed', 'cancelled')),
+  equipment_suggested   INTEGER NOT NULL DEFAULT 0,
   completion_summary    TEXT,
   completion_notes      TEXT,
   created_at            TEXT NOT NULL DEFAULT (datetime('now')),
@@ -354,6 +355,10 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, is_r
   const loanCols = db.prepare('PRAGMA table_info(loans)').all().map((c) => c.name);
   if (!loanCols.includes('picked_up_at')) db.exec('ALTER TABLE loans ADD COLUMN picked_up_at TEXT');
   if (!loanCols.includes('handed_back_at')) db.exec('ALTER TABLE loans ADD COLUMN handed_back_at TEXT');
+
+  // Dugnads created before equipment was suggested from the name.
+  const eventCols = db.prepare('PRAGMA table_info(dugnad_events)').all().map((c) => c.name);
+  if (!eventCols.includes('equipment_suggested')) db.exec('ALTER TABLE dugnad_events ADD COLUMN equipment_suggested INTEGER NOT NULL DEFAULT 0');
 
   migrateFirstDugnads();
   seedChecklistTemplates();

@@ -37,6 +37,17 @@ describe('notifications', () => {
     assert.equal(got(organiser, id2).filter((n) => /asked to join/.test(n.body)).length, 1, 'no duplicate');
   });
 
+  test('leaving and coming back are both reported to the organiser, each in its own words', async () => {
+    const id = await h.createEvent(org, { basics: { title: 'Back again' } });
+    await a.post(`/dugnad/${id}/join`);
+    await a.post(`/dugnad/${id}/leave`);
+    await a.post(`/dugnad/${id}/join`);
+    const text = got(organiser, id).map((n) => n.body);
+    assert.equal(text.filter((x) => /Ann Neighbour joined "Back again"/.test(x)).length, 1);
+    assert.equal(text.filter((x) => /Ann Neighbour left "Back again"/.test(x)).length, 1);
+    assert.equal(text.filter((x) => /Ann Neighbour rejoined "Back again"/.test(x)).length, 1);
+  });
+
   test('every notification says which dugnad it concerns and links to it', async () => {
     const id = await h.createEvent(org, { basics: { title: 'Linked up' } });
     await a.post(`/dugnad/${id}/join`);

@@ -9,7 +9,7 @@
   <h1><%= ev ? (published ? t('dugnad.edit_title') : t('dugnad.draft_title')) : t('dugnad.create') %></h1>
   <% if (ev) { %><p class="muted mb0"><strong><%= ev.title %></strong></p><% } %>
 
-  <ol class="steps" aria-label="<%= t('dugnad.steps') %>">
+  <ol class="wizard-steps" aria-label="<%= t('dugnad.steps') %>">
     <% stepNames.forEach((n, i) => { const on = i + 1 === step; %>
       <li class="<%= on ? 'on' : '' %>" <%- on ? 'aria-current="step"' : '' %>>
         <% if (ev && !on) { %><a href="/dugnad/<%= id %>/edit/<%= i + 1 %>"><span class="n"><%= i + 1 %></span><span class="l"><%= t('dugnad.step.' + n) %></span></a>
@@ -17,6 +17,7 @@
       </li>
     <% }) %>
   </ol>
+  <p class="step-now"><%= t('dugnad.step_of', { n: step, total: STEPS, name: t('dugnad.step.' + stepNames[step - 1]) }) %></p>
 
   <% if (error) { %><div class="flash flash-error" role="alert"><%= error %></div><% } %>
 
@@ -25,7 +26,8 @@
   <form method="post" action="<%= action %>" enctype="multipart/form-data" class="card form" novalidate>
     <h2><%= t('dugnad.step.basics') %></h2>
     <label class="field"><span><%= t('dugnad.f_title') %></span>
-      <input name="title" value="<%= g('title') %>" placeholder="<%= t('dugnad.f_title_ph') %>" maxlength="80" required></label>
+      <input name="title" value="<%= g('title') %>" placeholder="<%= t('dugnad.f_title_ph') %>" maxlength="80" required>
+      <small class="tiny muted"><%= t('dugnad.f_title_help') %></small></label>
     <label class="field"><span><%= t('dugnad.f_host') %></span>
       <input name="host_name" value="<%= g('host_name') %>" autocomplete="name" maxlength="60" required></label>
     <label class="field"><span><%= t('dugnad.f_description') %> <em><%= t('common.optional') %></em></span>
@@ -187,6 +189,7 @@
   <section class="card">
     <h2><%= t('dugnad.step.equipment') %></h2>
     <p class="muted small"><%= t('dugnad.equipment_intro') %></p>
+    <% if (ev.equipment_suggested && reqs.length) { %><div class="flash" role="status"><%= t('dugnad.auto_note', { title: ev.title }) %></div><% } %>
     <form method="post" action="/dugnad/<%= id %>/equipment/template" class="row template-row">
       <input type="hidden" name="next" value="edit5">
       <label class="grow field"><span class="sr-only"><%= t('dugnad.template_pick') %></span>

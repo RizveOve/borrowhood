@@ -59,9 +59,15 @@ describe('equipment requirements and templates', () => {
     assert.equal(dn.requirementsOf(dn.getEvent(id), null).length, 6);
     // Change the central template: the event keeps what it had.
     db.prepare("UPDATE dugnad_checklist_template_items SET equipment_name = 'CHANGED', suggested_quantity = 99 WHERE equipment_name = 'Brooms'").run();
-    reqs = dn.requirementsOf(dn.getEvent(id), null);
-    assert.ok(reqs.some((x) => x.equipment_name === 'Brooms'));
-    assert.ok(!reqs.some((x) => x.equipment_name === 'CHANGED'));
+    try {
+      reqs = dn.requirementsOf(dn.getEvent(id), null);
+      assert.ok(reqs.some((x) => x.equipment_name === 'Brooms'));
+      assert.ok(!reqs.some((x) => x.equipment_name === 'CHANGED'));
+    } finally {
+      // The templates are shared by every test, so put them back.
+      db.prepare("UPDATE dugnad_checklist_template_items SET equipment_name = 'Brooms', suggested_quantity = 3 WHERE equipment_name = 'CHANGED' AND suggested_quantity = 99 AND equipment_name_nb = 'Koster' AND template_id = (SELECT id FROM dugnad_checklist_templates WHERE category = 'cleanup')").run();
+      db.prepare("UPDATE dugnad_checklist_template_items SET equipment_name = 'Brooms', suggested_quantity = 2 WHERE equipment_name = 'CHANGED' AND suggested_quantity = 99").run();
+    }
     // The five suggested templates exist, and an unknown one is refused.
     assert.equal(db.prepare('SELECT COUNT(*) AS c FROM dugnad_checklist_templates').get().c, 5);
     await org.post(`/dugnad/${id}/equipment/template`, { category: 'nonsense' });
@@ -324,5 +330,89 @@ describe('community equipment requests and offers', () => {
     await approve(o1, loans(wb)[0].id);
     assert.equal(state(id, rid).state, 'approved');
     assert.equal(rq(id, qid).state, 'fulfilled');
+  });
+});
+
+describe('equipment listed automatically from the name', () => {
+  const names = (id) => dn.requirementsOf(dn.getEvent(id), null).map((r) => r.equipment_name).sort();
+  const create = (client, title, category = 'other') => h.createEvent(client, { basics: { title, category }, publish: false });
+
+  test('a cleanup name lists the cleanup equipment, all as needed and none assumed available', async () => {
+    const loansBefore = db.prepare('SELECT COUNT(*) AS c FROM loans').get().c;
+    const id = await create(org, 'Autumn clean-up of the courtyard');
+    assert.deepEqual(names(id), ['Brooms', 'Litter pickers', 'Rakes', 'Safety vests', 'Trash bags', 'Work gloves']);
+    assert.equal(db.prepare('SELECT equipment_suggested AS s FROM dugnad_events WHERE id = ?').get(id).s, 1);
+    assert.ok(dn.requirementsOf(dn.getEvent(id), null).every((r) => r.status === 'needed' && r.secured === 0 && r.links.length === 0));
+    assert.equal(db.prepare('SELECT COUNT(*) AS c FROM loans').get().c, loansBefore, 'no loan requests are made');
+  });
+
+  test('the person is told, and the Equipment step explains where the list came from', async () => {
+    const r = await org.post('/dugnad/create', { title: 'Garden planting day', host_name: 'H', category: 'other', visibility: 'hood' });
+    const id = Number(r.location.match(/dugnad\/(\d+)/)[1]);
+    assert.match((await org.follow(r)).text, /We listed 7 equipment items for (?:"|&#34;)Garden planting day/);
+    const page = (await org.get(`/dugnad/${id}/edit/5`)).text;
+    assert.match(page, /suggested from the name/);
+    assert.match(page, /Nothing is assumed to be available/);
+    assert.deepEqual(names(id), ['Gardening gloves', 'Pruning tools', 'Rakes', 'Shovels', 'Spades', 'Watering cans', 'Wheelbarrows']);
+  });
+
+  test('the name wins over the category, and two matching checklists are combined without repeats', async () => {
+    assert.ok(names(await create(org, 'Winter snow clearing', 'cleanup')).includes('Snow shovels'));
+    assert.ok(!names(await create(org, 'Winter snow clearing', 'cleanup')).includes('Trash bags'));
+    const both = names(await create(org, 'Garden clean-up'));
+    assert.ok(both.includes('Spades') && both.includes('Trash bags') && both.includes('Safety vests'));
+    assert.equal(both.filter((n) => n === 'Rakes').length, 1, 'Rakes appear in both checklists but are listed once');
+    assert.deepEqual(names(await create(org, 'Paint the bike room')), ['Drop cloths', 'Ladders', 'Paint rollers', 'Paint trays', 'Paintbrushes', 'Protective equipment', 'Sandpaper']);
+    assert.ok(names(await create(org, 'Summer party')).includes('Folding tables'));
+  });
+
+  test('Norwegian names work and the items are listed in the person\'s language', async () => {
+    // Their own user: the language choice is saved on the account, so it must not leak into other tests.
+    const norwegian = h.user('Norsk Arrangor', hood);
+    const no = await new h.Client().login(norwegian.email);
+    await no.get('/lang?l=nb&next=/dugnad');
+    const id = await create(no, 'Vårdugnad i hagen');
+    assert.ok(names(id).includes('Spader') && names(id).includes('Trillebårer'));
+    assert.ok(names(await create(no, 'Måking av snø')).includes('Snøskuffer'));
+  });
+
+  test('the category is the fallback when the name says nothing, and nothing is listed when neither fits', async () => {
+    assert.ok(names(await create(org, 'Neighbour meeting', 'shared')).includes('Trash bags'));
+    assert.ok(names(await create(org, 'Fix the gate', 'repairs')).includes('Paintbrushes'));
+    const none = await create(org, 'Neighbour meeting', 'other');
+    assert.deepEqual(names(none), []);
+    assert.equal(db.prepare('SELECT equipment_suggested AS s FROM dugnad_events WHERE id = ?').get(none).s, 1);
+  });
+
+  test('similar-looking words do not trigger the wrong list', () => {
+    assert.deepEqual(dn.suggestedChecklists('Ice cream social', 'other'), ['gathering']);
+    assert.deepEqual(dn.suggestedChecklists('Fixture day', 'other'), []);
+    assert.deepEqual(dn.suggestedChecklists('Island barbecue', 'other'), ['gathering']);
+  });
+
+  test('the organiser stays in control: removed items do not come back and renaming adds nothing', async () => {
+    const id = await create(org, 'Autumn clean-up');
+    for (const r of dn.requirementsOf(dn.getEvent(id), null)) await org.post(`/dugnad/${id}/equipment/${r.id}/delete`);
+    assert.deepEqual(names(id), []);
+    await org.post(`/dugnad/${id}/edit/1`, { title: 'Garden planting day', host_name: 'H', category: 'gardening', visibility: 'hood', go: 'save' });
+    assert.deepEqual(names(id), [], 'renaming does not list equipment again');
+    // They can still change and add their own, and the checklists remain available.
+    const rid = await addReq(id, { equipment_name: 'Compost bin', quantity_needed: '2' });
+    await org.post(`/dugnad/${id}/equipment/${rid}/edit`, { equipment_name: 'Compost bins', quantity_needed: '3' });
+    assert.deepEqual(names(id), ['Compost bins']);
+    await org.post(`/dugnad/${id}/equipment/template`, { category: 'gardening' });
+    assert.equal(names(id).length, 8);
+  });
+
+  test('published events and events that already have a list are left alone', async () => {
+    const id = await h.createEvent(org, { basics: { title: 'Clean up day' } });
+    db.prepare('UPDATE dugnad_equipment_requirements SET event_id = event_id WHERE event_id = ?').run(id);
+    db.prepare('DELETE FROM dugnad_equipment_requirements WHERE event_id = ?').run(id);
+    db.prepare('UPDATE dugnad_events SET equipment_suggested = 0 WHERE id = ?').run(id);
+    assert.equal(dn.suggestEquipment(dn.getEvent(id)), 0, 'not for a published event');
+    const draft = await create(org, 'Tidy day');
+    const before = names(draft).length;
+    assert.equal(dn.suggestEquipment(dn.getEvent(draft)), 0, 'not twice');
+    assert.equal(names(draft).length, before);
   });
 });

@@ -31,6 +31,12 @@ const en = {
   'dugnad.status_note.cancelled': 'This dugnad was cancelled and cannot be joined.', 'dugnad.status_label': 'Status',
 
   // My dugnads
+  'dugnad.pstatus.registered': 'Registered', 'dugnad.pstatus.pending': 'Waiting for approval', 'dugnad.pstatus.waitlisted': 'On the waiting list',
+  'dugnad.step_of': 'Step {n} of {total}: {name}',
+  'dugnad.f_title_help': 'We suggest the equipment this kind of dugnad usually needs, based on the name.',
+  'dugnad.auto_added': 'We listed {n} equipment items for "{title}" based on its name. Check them in the Equipment step.',
+  'dugnad.auto_note': 'These were suggested from the name "{title}". Change quantities, add your own, or remove what you do not need. Nothing is assumed to be available.',
+  'dugnad.n_rejoined': '{name} rejoined "{title}".',
   'dugnad.my_wrap': 'Ready to wrap up', 'dugnad.my_organizing': 'I organise', 'dugnad.my_drafts': 'Drafts', 'dugnad.my_participating': 'I take part in',
   'dugnad.my_completed': 'Completed by me', 'dugnad.my_attended': 'Dugnads I took part in',
   'dugnad.my_empty': "You haven't organised or joined a dugnad yet.", 'dugnad.my_empty_text': 'Find one in your neighbourhood or start your own.',
@@ -233,6 +239,12 @@ const nb = {
   'dugnad.status_note.draft': 'Bare du kan se dette. Publiser når den er klar.', 'dugnad.status_note.completed': 'Dugnaden er gjennomført.',
   'dugnad.status_note.cancelled': 'Dugnaden er avlyst og kan ikke meldes på.', 'dugnad.status_label': 'Status',
 
+  'dugnad.pstatus.registered': 'Påmeldt', 'dugnad.pstatus.pending': 'Venter på godkjenning', 'dugnad.pstatus.waitlisted': 'På venteliste',
+  'dugnad.step_of': 'Trinn {n} av {total}: {name}',
+  'dugnad.f_title_help': 'Vi foreslår utstyret denne typen dugnad vanligvis trenger, ut fra navnet.',
+  'dugnad.auto_added': 'Vi la inn {n} utstyrsting for «{title}» ut fra navnet. Se over dem i trinnet Utstyr.',
+  'dugnad.auto_note': 'Disse ble foreslått ut fra navnet «{title}». Endre antall, legg til egne, eller fjern det du ikke trenger. Ingenting regnes som tilgjengelig.',
+  'dugnad.n_rejoined': '{name} meldte seg på «{title}» igjen.',
   'dugnad.my_wrap': 'Klar til å avsluttes', 'dugnad.my_organizing': 'Jeg arrangerer', 'dugnad.my_drafts': 'Utkast', 'dugnad.my_participating': 'Jeg deltar på',
   'dugnad.my_completed': 'Avsluttet av meg', 'dugnad.my_attended': 'Dugnader jeg har deltatt på',
   'dugnad.my_empty': 'Du har ikke arrangert eller meldt deg på en dugnad ennå.', 'dugnad.my_empty_text': 'Finn en i nabolaget eller start din egen.',

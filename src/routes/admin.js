@@ -83,7 +83,7 @@ router.post('/messages/:id/reopen', (req, res) => {
 
 router.post('/reminders', (req, res) => {
   const r = runReminders();
-  flash(req, 'ok', req.t('flash.job', { r: r.reminders, o: r.overdue }));
+  flash(req, 'ok', req.t('flash.job', { r: r.reminders + r.dugnad, o: r.overdue })); // dugnad reminders count too
   res.redirect('/admin');
 });
 

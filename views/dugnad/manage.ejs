@@ -27,7 +27,7 @@
       <li class="row participant">
         <div class="grow">
           <strong><%= p.name %></strong><%= isOrg ? ' ★' : '' %>
-          <span class="badge badge-<%= ({ registered: 'ok', pending: 'warn', waitlisted: 'warn' })[p.registration_status] %>"><%= t('dugnad.reg.' + p.registration_status) %></span>
+          <span class="badge badge-<%= ({ registered: 'ok', pending: 'warn', waitlisted: 'warn' })[p.registration_status] %>"><%= t('dugnad.pstatus.' + p.registration_status) %></span>
           <% if (p.attendance_status) { %><span class="badge"><%= t('dugnad.att.' + p.attendance_status) %></span><% } %>
           <div class="tiny muted"><%= p.flat ? p.flat + ' · ' : '' %><%= fmtDateTime(p.registered_at) %></div>
         </div>

@@ -167,6 +167,59 @@ function nextAction(ev, user, myStatus) {
   return { key: 'dugnad.next_open', href: base };
 }
 
+// ---- Equipment suggested from the name -----------------------------------------------------------
+
+// Words (English and Norwegian) that point to one of the equipment checklists. A longer word counts when a
+// word in the dugnad's name starts with it, so "hagen" matches "hage" and "clean-up" matches "clean".
+// Short ones (up to three letters) must be the whole word, so "fix" matches "fix the gate" but not "fixture".
+const NAME_HINTS = {
+  cleanup: ['clean', 'tidy', 'litter', 'trash', 'rubbish', 'sweep', 'leaf', 'leaves', 'declutter', 'rydd', 'vask', 'søppel', 'løv', 'feie', 'plukk'],
+  gardening: ['garden', 'plant', 'bulb', 'flower', 'hedge', 'lawn', 'weed', 'prune', 'compost', 'soil', 'hage', 'blomst', 'plen', 'gress', 'kompost', 'beskjær', 'luking'],
+  painting: ['paint', 'repair', 'fix', 'maintenance', 'fence', 'varnish', 'stain', 'maling', 'male', 'maler', 'vedlikehold', 'reparasjon', 'reparer', 'gjerde', 'beis'],
+  snow: ['snow', 'grit', 'snø', 'måk', 'isen', 'strø'],
+  gathering: ['dinner', 'party', 'bbq', 'barbecue', 'grill', 'picnic', 'gathering', 'potluck', 'lunch', 'brunch', 'social', 'celebration', 'festival', 'fest', 'samling', 'middag', 'hygge', 'kveld', 'kafé', 'cafe', 'jubileum', 'tent'],
+};
+// When the name says nothing, the chosen category decides.
+const CATEGORY_CHECKLIST = { cleanup: 'cleanup', gardening: 'gardening', painting: 'painting', repairs: 'painting', snow: 'snow', gathering: 'gathering', shared: 'cleanup', recycling: 'cleanup' };
+
+// Which checklists fit this name: the best one or two by matching words, otherwise the category's.
+function suggestedChecklists(title, category) {
+  const words = ' ' + String(title || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ') + ' ';
+  const hits = Object.entries(NAME_HINTS)
+    .map(([key, stems]) => [key, stems.filter((s) => words.includes(s.length <= 3 ? ` ${s} ` : ` ${s}`)).length])
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 2)
+    .map(([key]) => key);
+  if (hits.length) return hits;
+  return CATEGORY_CHECKLIST[category] ? [CATEGORY_CHECKLIST[category]] : [];
+}
+
+// Lists the equipment such a dugnad usually needs. They are only suggestions: every item starts as
+// "needed" (nothing is assumed available) and the organiser can change or remove any of them. Done once
+// per event, so removing an item and renaming the dugnad never brings it back.
+function suggestEquipment(ev, lang = 'en') {
+  if (ev.equipment_suggested || ev.status !== 'draft') return 0;
+  const have = new Set(db.prepare('SELECT LOWER(equipment_name) AS n FROM dugnad_equipment_requirements WHERE event_id = ?').all(ev.id).map((r) => r.n));
+  let added = 0;
+  tx(() => {
+    for (const category of suggestedChecklists(ev.title, ev.category)) {
+      const tpl = db.prepare('SELECT id FROM dugnad_checklist_templates WHERE category = ?').get(category);
+      if (!tpl) continue;
+      for (const it of db.prepare('SELECT * FROM dugnad_checklist_template_items WHERE template_id = ? ORDER BY sort_order').all(tpl.id)) {
+        const name = lang === 'nb' ? it.equipment_name_nb : it.equipment_name;
+        if (have.has(name.toLowerCase())) continue;
+        have.add(name.toLowerCase());
+        db.prepare(`INSERT INTO dugnad_equipment_requirements (event_id, equipment_name, quantity_needed, essential, needed_from, needed_until)
+          VALUES (?, ?, ?, ?, ?, ?)`).run(ev.id, name, it.suggested_quantity, it.essential_by_default, ev.event_date, ev.event_date);
+        added++;
+      }
+    }
+    db.prepare('UPDATE dugnad_events SET equipment_suggested = 1 WHERE id = ?').run(ev.id);
+  });
+  return added;
+}
+
 // ---- Notifications ------------------------------------------------------------------------------
 
 // People who should hear about changes to an event: organiser excluded, everyone once.
@@ -222,11 +275,13 @@ function joinEvent(evId, user) {
     if (existing && ['rejected', 'removed'].includes(existing.registration_status)) return { error: 'dugnad.err_blocked' };
     const status = ev.approval_required ? 'pending' : isFull(ev) ? 'waitlisted' : 'registered';
     writeParticipant(ev.id, user.id, status);
-    return { ev, status };
+    return { ev, status, again: !!existing };
   });
   if (result.error) return result;
-  const { ev, status } = result;
-  const key = { pending: 'dugnad.n_request', registered: 'dugnad.n_joined', waitlisted: 'dugnad.n_waitlisted' }[status];
+  const { ev, status, again } = result;
+  // Someone who left and comes back gets their own wording, so the organiser can tell.
+  const key = status === 'registered' && again ? 'dugnad.n_rejoined'
+    : { pending: 'dugnad.n_request', registered: 'dugnad.n_joined', waitlisted: 'dugnad.n_waitlisted' }[status];
   notify(ev.organizer_id, (x) => x.t(key, { name: user.name, title: ev.title }), status === 'pending' ? `${eventLink(ev)}/manage#participants` : eventLink(ev));
   return { status };
 }
@@ -551,7 +606,7 @@ module.exports = {
   CATEGORIES, CATEGORY_KEYS, catEmoji, PRIORITIES, TASK_STATUSES, FILTERS, ACTIVE,
   getEvent, getParticipant, isInvited, canView, canManage, isAdmin, spotsLeft, isFull, hasEnded, deadlinePassed, closedReason,
   registrationLabel, durationMinutes, discover, myEvents, nextAction,
-  audience, notifyAll, eventLink, joinEvent, leaveEvent, decideRequest, removeParticipant, promoteWaitlist, participantsOf, setAttendance,
+  suggestedChecklists, suggestEquipment, audience, notifyAll, eventLink, joinEvent, leaveEvent, decideRequest, removeParticipant, promoteWaitlist, participantsOf, setAttendance,
   tasksOf, getTask, assignedCount, assignVolunteer, releaseVolunteer, moveTask,
   linkState, SECURED, requirementsOf, searchEquipment, requestsOf, announcementsOf,
   publishProblem, publishEvent, notifyInvitees, completeEvent, cancelEvent, runReminders, writeParticipant,
