@@ -77,7 +77,10 @@ async function attachSeedPhotos() {
 function seedDemo() {
   const t = today();
   const hash = bcrypt.hashSync('password123', 10);
-  const hoodId = (code) => db.prepare('SELECT id FROM neighbourhoods WHERE join_code = ?').get(code)?.id;
+  // A block counts as seeded if its neighbourhood OR any of its users exist, so deleting a demo
+  // neighbourhood or giving it a new join code never makes the seed run (and collide) again.
+  const seeded = (code, ...emails) => !!db.prepare('SELECT 1 FROM neighbourhoods WHERE join_code = ?').get(code)
+    || emails.some((e) => db.prepare('SELECT 1 FROM users WHERE email = ?').get(e));
   const user = (hood, email, name, flat) => Number(db.prepare(
     'INSERT INTO users (email, name, flat, password_hash, neighbourhood_id) VALUES (?, ?, ?, ?, ?)'
   ).run(email, name, flat, hash, hood).lastInsertRowid);
@@ -88,7 +91,7 @@ function seedDemo() {
     'INSERT INTO loans (item_id, borrower_id, start_date, end_date, status) VALUES (?, ?, ?, ?, ?)'
   ).run(itemId, borrower, s, e, status);
 
-  if (!hoodId('DEMO42')) {
+  if (!seeded('DEMO42', 'kari@example.com', 'ola@example.com', 'amira@example.com')) {
     tx(() => {
       const hood = Number(db.prepare(`INSERT INTO neighbourhoods (name, kind, city, join_code)
         VALUES ('Solsiden Borettslag', 'borettslag', 'Trondheim', 'DEMO42')`).run().lastInsertRowid);
@@ -109,7 +112,7 @@ function seedDemo() {
     });
   }
 
-  if (!hoodId('MOHO24')) {
+  if (!seeded('MOHO24', 'jonas@example.com', 'lin@example.com')) {
     tx(() => {
       const hood = Number(db.prepare(`INSERT INTO neighbourhoods (name, kind, city, join_code)
         VALUES ('Moholt Studentby', 'student', 'Trondheim', 'MOHO24')`).run().lastInsertRowid);
@@ -125,6 +128,78 @@ function seedDemo() {
       const kari = db.prepare("SELECT id FROM users WHERE email = 'kari@example.com'").get();
       if (kari) loan(projector, kari.id, addDays(t, 3), addDays(t, 4), 'approved');
     });
+  }
+
+  seedDemoDugnads(t);
+}
+
+// Upcoming dugnads for the demo neighbourhoods, with tasks, equipment needs and a few sign-ups. Dates are
+// relative to today, and they are added again whenever the demo users have none left upcoming, so the
+// list is never empty on a demo.
+function seedDemoDugnads(t) {
+  const upcoming = db.prepare(`SELECT COUNT(*) AS c FROM dugnad_events d JOIN users u ON u.id = d.organizer_id
+    WHERE u.email LIKE '%@example.com' AND d.status = 'published' AND d.event_date >= ?`).get(t).c;
+  if (upcoming) return;
+  const find = (email) => db.prepare('SELECT id, name, neighbourhood_id FROM users WHERE email = ?').get(email);
+  const plan = [
+    { host: 'kari@example.com', title: 'Autumn clean-up of the courtyard', category: 'cleanup', days: 3, start: '10:00', end: '13:00',
+      place: 'By the bike room', address: 'Solsiden Borettslag, courtyard', max: 12,
+      description: 'Rake leaves, sweep the paths and tidy the shared outdoor furniture before winter. Coffee and buns afterwards.',
+      joiners: ['ola@example.com', 'amira@example.com'],
+      tasks: [['Rake the leaves', 3, 'high'], ['Sweep the paths', 2, 'normal'], ['Wipe down outdoor furniture', 2, 'low']],
+      volunteers: [[0, 'ola@example.com'], [1, 'amira@example.com']],
+      equipment: [['Rakes', 3, 1, 0], ['Brooms', 2, 1, 1], ['Trash bags', 10, 0, null], ['Work gloves', 6, 0, null]],
+      announce: ['Please bring gloves', 'We have rakes and brooms covered. If you have work gloves, bring a pair.'] },
+    { host: 'ola@example.com', title: 'Paint the bike room', category: 'painting', days: 8, start: '16:30', end: '19:30',
+      place: 'Bike room, basement', max: 2, approval: 1, description: 'A fresh coat of paint for the bike room. Two painters needed.', joiners: ['kari@example.com'],
+      tasks: [['Paint the walls', 2, 'normal']], equipment: [['Paint rollers', 2, 1, null], ['Drop cloths', 2, 1, null]] },
+    { host: 'amira@example.com', title: 'Plant bulbs along the fence', category: 'gardening', days: 12, start: '12:00', end: '14:00',
+      place: 'The fence by the entrance', max: 4, description: 'Spring bulbs now means colour in April.', joiners: ['kari@example.com', 'ola@example.com'],
+      tasks: [['Dig planting holes', 2, 'normal'], ['Plant the bulbs', 2, 'normal']], equipment: [['Spades', 2, 1, null], ['Gardening gloves', 4, 0, null]] },
+    { host: 'jonas@example.com', title: 'Tidy the ski room before winter', category: 'shared', days: 5, start: '18:00', end: '20:00',
+      place: 'Block 7 ski room', max: 8, description: 'Sort the shared ski room so everyone can find their gear.', joiners: ['lin@example.com'],
+      tasks: [['Sort and label shelves', 2, 'normal'], ['Sweep and mop', 1, 'low']], equipment: [['Brooms', 2, 0, null]] },
+    { host: 'lin@example.com', title: 'Community dinner in the garden', category: 'gathering', days: 15, start: '17:00', end: '21:00',
+      place: 'Shared garden, Block 3', max: 20, private: 1, invite: ['jonas@example.com'], description: 'An invitation-only potluck for the Block 3 neighbours.', joiners: [],
+      tasks: [['Set up tables', 3, 'normal']], equipment: [['Folding tables', 3, 1, null], ['Chairs', 10, 1, null]] },
+  ];
+  tx(() => {
+    for (const d of plan) {
+      const h = find(d.host);
+      if (!h) continue;
+      const id = Number(db.prepare(`INSERT INTO dugnad_events (organizer_id, neighbourhood_id, host_name, title, description, category, visibility,
+        event_date, start_time, end_time, location_name, location_address, max_participants, approval_required, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'published')`)
+        .run(h.id, h.neighbourhood_id, h.name, d.title, d.description, d.category, d.private ? 'private' : 'hood',
+          addDays(t, d.days), d.start, d.end, d.place, d.address || null, d.max, d.approval || 0).lastInsertRowid);
+      for (const email of [d.host, ...d.joiners]) {
+        const u = find(email);
+        if (u && u.neighbourhood_id === h.neighbourhood_id) db.prepare("INSERT OR IGNORE INTO dugnad_participants (event_id, user_id, registration_status) VALUES (?, ?, 'registered')").run(id, u.id);
+      }
+      for (const email of d.invite || []) {
+        const u = find(email);
+        if (u) db.prepare('INSERT OR IGNORE INTO dugnad_invites (event_id, user_id, invited_by, notified) VALUES (?, ?, ?, 1)').run(id, u.id, h.id);
+      }
+      const taskIds = d.tasks.map(([title, needed, priority], i) => Number(db.prepare(
+        'INSERT INTO dugnad_tasks (event_id, title, volunteers_needed, priority, sort_order, created_by) VALUES (?, ?, ?, ?, ?, ?)').run(id, title, needed, priority, i, h.id).lastInsertRowid));
+      for (const [n, email] of d.volunteers || []) {
+        const u = find(email);
+        if (u) db.prepare("INSERT OR IGNORE INTO dugnad_task_assignments (task_id, user_id, assignment_status, assigned_by) VALUES (?, ?, 'assigned', ?)").run(taskIds[n], u.id, h.id);
+      }
+      for (const [name, qty, essential, task] of d.equipment) {
+        db.prepare(`INSERT INTO dugnad_equipment_requirements (event_id, task_id, equipment_name, quantity_needed, essential, needed_from, needed_until)
+          VALUES (?, ?, ?, ?, ?, ?, ?)`).run(id, task == null ? null : taskIds[task], name, qty, essential, addDays(t, d.days), addDays(t, d.days));
+      }
+      if (d.announce) db.prepare('INSERT INTO dugnad_announcements (event_id, author_id, title, message) VALUES (?, ?, ?, ?)').run(id, h.id, ...d.announce);
+    }
+  });
+
+  // An open community request, so neighbours have something to offer to.
+  const first = db.prepare("SELECT e.id, e.organizer_id FROM dugnad_events e WHERE e.title = 'Autumn clean-up of the courtyard' ORDER BY e.id DESC LIMIT 1").get();
+  if (first) {
+    db.prepare(`INSERT INTO dugnad_equipment_requests (event_id, created_by, equipment_name, description, quantity_needed, essential, needed_from, needed_until, instructions)
+      VALUES (?, ?, 'Wheelbarrow', 'For carrying leaves to the container', 1, 1, ?, ?, 'Leave it by the bike room, we will return it the same day.')`)
+      .run(first.id, first.organizer_id, addDays(t, 3), addDays(t, 3));
   }
 }
 

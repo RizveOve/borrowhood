@@ -1,6 +1,6 @@
 // English / Norwegian (bokmål) strings. Use t('key', { var }) in views and req.t() in routes.
 const en = {
-  'nav.browse': 'Browse', 'nav.lend': 'Lend', 'nav.loans': 'Loans', 'nav.me': 'Me', 'nav.admin': 'Admin', 'nav.about': 'About', 'nav.messages': 'Messages',
+  'nav.browse': 'Browse', 'nav.lend': 'Lend', 'nav.loans': 'Loans', 'nav.me': 'Me', 'nav.admin': 'Admin', 'nav.about': 'About', 'nav.dugnad': 'Dugnad', 'nav.messages': 'Messages',
   'nav.notifications': 'Notifications', 'nav.profile': 'Your profile', 'nav.language': 'Language',
   'auth.login': 'Log in', 'auth.signup': 'Sign up', 'auth.logout': 'Log out',
   'common.back': 'Back', 'common.save': 'Save', 'common.edit': 'Edit', 'common.delete': 'Delete',
@@ -188,12 +188,13 @@ const en = {
   'msg.err_empty': 'Write a message first.',
   'msg.n_new': '{name} sent you a message about "{title}": {preview}', 'msg.mail_new': 'New message from {name} about "{title}"',
 
+
   'err.not_found': 'Not found', 'err.not_found_text': "We couldn't find that page.", 'err.server': 'Something went wrong',
   'err.server_text': 'Please try again in a moment.', 'err.forbidden': 'Not allowed', 'err.admins_only': 'Admins only.',
 };
 
 const nb = {
-  'nav.browse': 'Utforsk', 'nav.lend': 'Lån ut', 'nav.loans': 'Lån', 'nav.me': 'Profil', 'nav.admin': 'Admin', 'nav.about': 'Om oss', 'nav.messages': 'Meldinger',
+  'nav.browse': 'Utforsk', 'nav.lend': 'Lån ut', 'nav.loans': 'Lån', 'nav.me': 'Profil', 'nav.admin': 'Admin', 'nav.about': 'Om oss', 'nav.dugnad': 'Dugnad', 'nav.messages': 'Meldinger',
   'nav.notifications': 'Varsler', 'nav.profile': 'Din profil', 'nav.language': 'Språk',
   'auth.login': 'Logg inn', 'auth.signup': 'Registrer deg', 'auth.logout': 'Logg ut',
   'common.back': 'Tilbake', 'common.save': 'Lagre', 'common.edit': 'Rediger', 'common.delete': 'Slett',
@@ -381,9 +382,14 @@ const nb = {
   'msg.err_empty': 'Skriv en melding først.',
   'msg.n_new': '{name} sendte deg en melding om «{title}»: {preview}', 'msg.mail_new': 'Ny melding fra {name} om «{title}»',
 
+
   'err.not_found': 'Fant ikke siden', 'err.not_found_text': 'Vi fant ikke det du lette etter.', 'err.server': 'Noe gikk galt',
   'err.server_text': 'Prøv igjen om litt.', 'err.forbidden': 'Ikke tillatt', 'err.admins_only': 'Kun for admin.',
 };
+
+// Dugnad texts live in their own file.
+Object.assign(en, require('./i18n-dugnad').en);
+Object.assign(nb, require('./i18n-dugnad').nb);
 
 const DICTS = { en, nb };
 const LANGS = Object.keys(DICTS);

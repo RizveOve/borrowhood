@@ -1,0 +1,219 @@
+<%- include('../partials/top') %>
+<% const registered = participants.filter(p => p.registration_status === 'registered');
+   const pendingPeople = participants.filter(p => p.registration_status === 'pending');
+   const stateTone = { approved: 'ok', active: 'ok', returned: 'ok', own: 'ok', partial: 'warn', pending: 'warn', unavailable: 'overdue', rejected: 'overdue', cancelled: 'overdue' };
+   const loanTone = (s) => stateTone[s] || 'x'; %>
+<a href="/dugnad/<%= ev.id %>" class="back">← <%= ev.title %></a>
+<div class="page-head">
+  <h1><%= t('dugnad.manage') %></h1>
+  <a href="/dugnad/<%= ev.id %>/edit/1" class="btn"><%= t('dugnad.edit_details') %></a>
+</div>
+<nav class="manage-nav" aria-label="<%= t('dugnad.manage') %>">
+  <a href="#participants"><%= t('dugnad.participants') %><% if (pendingPeople.length) { %> <span class="dot dot-inline"><%= pendingPeople.length %></span><% } %></a>
+  <a href="#tasks"><%= t('dugnad.tasks') %></a>
+  <a href="#equipment"><%= t('dugnad.equipment') %></a>
+  <a href="#requests"><%= t('dugnad.requests') %></a>
+  <a href="#announcements"><%= t('dugnad.announcements') %></a>
+  <a href="#finish"><%= t('dugnad.finish') %></a>
+</nav>
+
+<%# ---------- Participants ---------- %>
+<section id="participants">
+  <h2><%= t('dugnad.participants') %> <span class="badge"><%= registered.length %><%= ev.max_participants ? '/' + ev.max_participants : '' %></span></h2>
+  <p class="tiny muted"><%= t('dugnad.attendance_privacy') %></p>
+  <% if (!participants.length) { %><p class="muted small" role="status"><%= t('dugnad.no_participants') %></p><% } %>
+  <ul class="list">
+    <% participants.forEach(p => { const isOrg = p.user_id === ev.organizer_id; %>
+      <li class="row participant">
+        <div class="grow">
+          <strong><%= p.name %></strong><%= isOrg ? ' ★' : '' %>
+          <span class="badge badge-<%= ({ registered: 'ok', pending: 'warn', waitlisted: 'warn' })[p.registration_status] %>"><%= t('dugnad.reg.' + p.registration_status) %></span>
+          <% if (p.attendance_status) { %><span class="badge"><%= t('dugnad.att.' + p.attendance_status) %></span><% } %>
+          <div class="tiny muted"><%= p.flat ? p.flat + ' · ' : '' %><%= fmtDateTime(p.registered_at) %></div>
+        </div>
+        <div class="dugnad-actions">
+          <% if (p.registration_status === 'pending') { %>
+            <form method="post" action="/dugnad/<%= ev.id %>/participants/<%= p.user_id %>/approve"><input type="hidden" name="next" value="manage#participants"><button class="btn btn-primary btn-sm"><%= t('dugnad.approve') %></button></form>
+            <form method="post" action="/dugnad/<%= ev.id %>/participants/<%= p.user_id %>/reject"><input type="hidden" name="next" value="manage#participants"><button class="btn btn-sm"><%= t('dugnad.reject') %></button></form>
+          <% } else if (p.registration_status === 'registered') { %>
+            <% ['attended', 'absent'].forEach(v => { %>
+              <form method="post" action="/dugnad/<%= ev.id %>/participants/<%= p.user_id %>/<%= p.attendance_status === v ? 'clear' : v %>"><input type="hidden" name="next" value="manage#participants">
+                <button class="btn btn-sm <%= p.attendance_status === v ? 'btn-primary' : '' %>" aria-pressed="<%= p.attendance_status === v %>"><%= t('dugnad.att.' + v) %></button></form>
+            <% }) %>
+          <% } %>
+          <% if (!isOrg && p.registration_status !== 'pending') { %>
+            <form method="post" action="/dugnad/<%= ev.id %>/participants/<%= p.user_id %>/remove" data-confirm="<%= t('dugnad.confirm_remove', { name: p.name }) %>"><input type="hidden" name="next" value="manage#participants"><button class="btn btn-ghost btn-sm danger-text"><%= t('dugnad.remove') %></button></form>
+          <% } %>
+        </div>
+      </li>
+    <% }) %>
+  </ul>
+</section>
+
+<%# ---------- Tasks ---------- %>
+<section id="tasks">
+  <div class="page-head"><h2><%= t('dugnad.tasks') %></h2><a href="/dugnad/<%= ev.id %>/edit/4" class="btn btn-sm"><%= t('dugnad.edit_tasks') %></a></div>
+  <% if (!tasks.length) { %><p class="muted small" role="status"><%= t('dugnad.no_tasks') %></p><% } %>
+  <% tasks.forEach(tk => { const free = registered.filter(p => !tk.assigned.some(a => a.user_id === p.user_id)); %>
+    <div class="card task-manage">
+      <div class="row">
+        <div class="grow"><strong><%= tk.title %></strong>
+          <span class="small muted"> · <%= t('dugnad.volunteers_of', { n: tk.assigned.length, total: tk.volunteers_needed }) %></span>
+          <span class="badge"><%= t('dugnad.task_st.' + tk.label) %></span></div>
+        <form method="post" action="/dugnad/<%= ev.id %>/tasks/<%= tk.id %>/status" class="inline-form"><input type="hidden" name="next" value="manage#tasks">
+          <label class="sr-only" for="ms<%= tk.id %>"><%= t('dugnad.task_status') %></label>
+          <select id="ms<%= tk.id %>" name="status" onchange="this.form.requestSubmit()">
+            <% dn.TASK_STATUSES.forEach(s => { %><option value="<%= s %>" <%= tk.status === s ? 'selected' : '' %>><%= t('dugnad.task_st.' + s) %></option><% }) %>
+          </select><noscript><button class="btn btn-sm"><%= t('dugnad.save') %></button></noscript></form>
+      </div>
+      <ul class="chips-list">
+        <% tk.assigned.forEach(a => { %><li><span class="chip-link"><%= a.name %>
+          <form method="post" action="/dugnad/<%= ev.id %>/tasks/<%= tk.id %>/assignments/<%= a.user_id %>/remove" class="inline-form" data-confirm="<%= t('dugnad.confirm_unassign', { name: a.name }) %>"><input type="hidden" name="next" value="manage#tasks"><button class="x-btn" aria-label="<%= t('dugnad.remove') %> <%= a.name %>">×</button></form></span></li><% }) %>
+        <% tk.pending.forEach(a => { %><li><span class="chip-link pending"><%= a.name %> · <%= t('dugnad.task_pending') %>
+          <form method="post" action="/dugnad/<%= ev.id %>/tasks/<%= tk.id %>/assignments/<%= a.user_id %>/approve" class="inline-form"><input type="hidden" name="next" value="manage#tasks"><button class="btn btn-sm btn-primary"><%= t('dugnad.approve') %></button></form>
+          <form method="post" action="/dugnad/<%= ev.id %>/tasks/<%= tk.id %>/assignments/<%= a.user_id %>/remove" class="inline-form"><input type="hidden" name="next" value="manage#tasks"><button class="btn btn-sm"><%= t('dugnad.reject') %></button></form></span></li><% }) %>
+      </ul>
+      <% if (!tk.full && free.length && ['open', 'in_progress'].includes(tk.status)) { %>
+        <form method="post" action="/dugnad/<%= ev.id %>/tasks/<%= tk.id %>/assign" class="row">
+          <input type="hidden" name="next" value="manage#tasks">
+          <label class="grow field"><span class="sr-only"><%= t('dugnad.assign_to') %></span>
+            <select name="user_id" required><option value="" disabled selected><%= t('dugnad.assign_to') %></option>
+              <% free.forEach(p => { %><option value="<%= p.user_id %>"><%= p.name %></option><% }) %></select></label>
+          <button class="btn btn-sm"><%= t('dugnad.assign') %></button>
+        </form>
+      <% } %>
+    </div>
+  <% }) %>
+</section>
+
+<%# ---------- Equipment planner ---------- %>
+<section id="equipment">
+  <div class="page-head"><h2><%= t('dugnad.equipment') %></h2><a href="/dugnad/<%= ev.id %>/edit/5" class="btn btn-sm"><%= t('dugnad.edit_equipment') %></a></div>
+  <p class="small muted"><%= t('dugnad.planner_intro') %></p>
+  <% if (!reqs.length) { %><p class="muted small" role="status"><%= t('dugnad.no_equipment') %></p><% } %>
+  <% reqs.forEach(r => { %>
+    <div class="card req-card">
+      <div class="row">
+        <div class="grow"><strong><%= r.equipment_name %></strong> × <%= r.quantity_needed %>
+          <span class="small muted"> · <%= t(r.essential ? 'dugnad.essential' : 'dugnad.optional') %><%= r.task_title ? ' · ' + r.task_title : '' %></span></div>
+        <span class="badge badge-<%= loanTone(r.state) %>"><%= t('dugnad.req.' + r.state) %><%= ['partial', 'approved'].includes(r.state) ? ` ${r.secured}/${r.quantity_needed}` : '' %></span>
+      </div>
+      <% if (r.state === 'available') { %><p class="tiny muted"><%= t('dugnad.available_hint', { n: r.matches }) %></p><% } %>
+      <% if (r.links.length) { %>
+        <ul class="list link-list">
+          <% r.links.forEach(l => { %>
+            <li class="row">
+              <span class="grow"><a href="/items/<%= l.item_id %>"><%= l.item_title %></a> <span class="small muted">· <%= l.is_org ? 'BorrowHood' : l.owner_name %><% if (l.loan_id && l.start_date) { %> · <%= fmtDate(l.start_date) %>–<%= fmtDate(l.end_date) %><% } %></span></span>
+              <span class="badge badge-<%= loanTone(l.state) %>"><%= t('dugnad.link.' + l.state) %></span>
+              <% if (l.loan_id) { %><a href="/loans?tab=borrowing" class="small"><%= t('dugnad.see_loan') %></a><% } %>
+              <form method="post" action="/dugnad/<%= ev.id %>/equipment/<%= r.id %>/links/<%= l.id %>/remove" data-confirm="<%= t('dugnad.confirm_unlink') %>"><input type="hidden" name="next" value="manage#equipment"><button class="btn btn-ghost btn-sm" aria-label="<%= t('dugnad.unlink') %>">×</button></form>
+            </li>
+          <% }) %>
+        </ul>
+        <% if (r.links.some(l => l.state === 'rejected')) { %><p class="tiny muted"><%= t('dugnad.rejected_hint') %></p><% } %>
+      <% } %>
+      <% if (r.status !== 'no_longer_needed') { %>
+        <div class="req-actions">
+          <a class="btn btn-sm" href="/dugnad/<%= ev.id %>/equipment/<%= r.id %>/find"><%= t('dugnad.find_equipment') %></a>
+          <% if (r.secured < r.quantity_needed) { %>
+            <details class="inline-details"><summary class="btn btn-sm"><%= t('dugnad.ask_neighbours') %></summary>
+              <form method="post" action="/dugnad/<%= ev.id %>/requests" class="form">
+                <input type="hidden" name="next" value="manage#requests"><input type="hidden" name="requirement_id" value="<%= r.id %>">
+                <input type="hidden" name="equipment_name" value="<%= r.equipment_name %>"><input type="hidden" name="essential" value="<%= r.essential ? 'essential' : 'optional' %>">
+                <input type="hidden" name="needed_from" value="<%= r.needed_from || ev.event_date || '' %>"><input type="hidden" name="needed_until" value="<%= r.needed_until || ev.event_date || '' %>">
+                <label class="field"><span><%= t('dugnad.quantity') %></span><input type="number" name="quantity_needed" value="<%= Math.max(1, r.quantity_needed - r.secured) %>" min="1" max="999" required></label>
+                <label class="field"><span><%= t('dugnad.instructions') %> <em><%= t('common.optional') %></em></span><input name="instructions" maxlength="300"></label>
+                <button class="btn btn-primary btn-sm"><%= t('dugnad.publish_request') %></button>
+              </form></details>
+          <% } %>
+        </div>
+      <% } %>
+    </div>
+  <% }) %>
+</section>
+
+<%# ---------- Community equipment requests ---------- %>
+<section id="requests">
+  <h2><%= t('dugnad.requests') %></h2>
+  <p class="small muted"><%= t('dugnad.requests_intro') %></p>
+  <% if (!requests.length) { %><p class="muted small" role="status"><%= t('dugnad.no_requests') %></p><% } %>
+  <% requests.forEach(q => { %>
+    <div class="card request">
+      <div class="row">
+        <div class="grow"><strong><%= q.equipment_name %></strong> × <%= q.quantity_needed %>
+          <span class="small muted"> · <%= t(q.essential ? 'dugnad.essential' : 'dugnad.optional') %><% if (q.needed_from) { %> · <%= (q.needed_until || q.needed_from) === q.needed_from ? t('dugnad.needed_on', { date: fmtDate(q.needed_from) }) : t('dugnad.needed_between', { from: fmtDate(q.needed_from), to: fmtDate(q.needed_until) }) %><% } %></span></div>
+        <span class="badge badge-<%= ({ fulfilled: 'ok', partial: 'warn', offers: 'warn', cancelled: 'overdue' })[q.state] || 'x' %>"><%= t('dugnad.rq.' + q.state) %> <%= ['partial', 'fulfilled'].includes(q.state) ? `${q.secured}/${q.quantity_needed}` : '' %></span>
+      </div>
+      <% if (!q.offers.length) { %><p class="tiny muted"><%= t('dugnad.no_offers') %></p><% } %>
+      <ul class="list link-list">
+        <% q.offers.forEach(o => { %>
+          <li class="row">
+            <div class="grow"><a href="/items/<%= o.item_id %>"><%= o.item_title %></a> <span class="small muted">· <%= o.owner_name %></span>
+              <% if (o.message) { %><div class="small quote"><%= o.message %></div><% } %></div>
+            <% if (o.loan_id) { %>
+              <span class="badge badge-<%= loanTone(o.state) %>"><%= t('dugnad.link.' + o.state) %></span><a href="/loans?tab=borrowing" class="small"><%= t('dugnad.see_loan') %></a>
+            <% } else if (q.status === 'open') { %>
+              <form method="post" action="/dugnad/<%= ev.id %>/offers/<%= o.id %>/request-loan" class="inline-form"><input type="hidden" name="next" value="manage#requests">
+                <button class="btn btn-primary btn-sm"><%= t('dugnad.request_to_borrow') %></button></form>
+            <% } %>
+          </li>
+        <% }) %>
+      </ul>
+      <% if (q.status === 'open') { %>
+        <div class="req-actions">
+          <details class="inline-details"><summary class="btn btn-sm"><%= t('dugnad.adjust') %></summary>
+            <form method="post" action="/dugnad/<%= ev.id %>/requests/<%= q.id %>/edit" class="form">
+              <input type="hidden" name="next" value="manage#requests">
+              <%- include('../partials/dugnad-req-fields', { r: q, tasks: [], noTask: true, request: true }) %>
+              <button class="btn btn-primary btn-sm"><%= t('dugnad.save') %></button>
+            </form></details>
+          <form method="post" action="/dugnad/<%= ev.id %>/requests/<%= q.id %>/cancel" data-confirm="<%= t('dugnad.confirm_close_request') %>"><input type="hidden" name="next" value="manage#requests"><button class="btn btn-ghost btn-sm danger-text"><%= t('dugnad.close_request') %></button></form>
+        </div>
+      <% } %>
+    </div>
+  <% }) %>
+  <details class="card"><summary><strong><%= t('dugnad.new_request') %></strong></summary>
+    <form method="post" action="/dugnad/<%= ev.id %>/requests" class="form">
+      <input type="hidden" name="next" value="manage#requests">
+      <%- include('../partials/dugnad-req-fields', { r: { needed_from: ev.event_date, needed_until: ev.event_date }, tasks: [], noTask: true, request: true }) %>
+      <button class="btn btn-primary btn-block"><%= t('dugnad.publish_request') %></button>
+    </form></details>
+</section>
+
+<%# ---------- Announcements ---------- %>
+<section id="announcements">
+  <h2><%= t('dugnad.announcements') %></h2>
+  <form method="post" action="/dugnad/<%= ev.id %>/announcements" class="card form">
+    <input type="hidden" name="next" value="manage#announcements">
+    <label class="field"><span><%= t('dugnad.a_title') %></span><input name="title" maxlength="100" required placeholder="<%= t('dugnad.a_title_ph') %>"></label>
+    <label class="field"><span><%= t('dugnad.a_message') %></span><textarea name="message" rows="3" maxlength="2000" required></textarea></label>
+    <label class="check"><input type="checkbox" name="notify" value="1" checked><span><%= t('dugnad.a_notify', { n: registered.length - 1 < 0 ? 0 : registered.length - 1 }) %></span></label>
+    <button class="btn btn-primary btn-block"><%= t('dugnad.a_publish') %></button>
+  </form>
+  <% if (!announcements.length) { %><p class="muted small" role="status"><%= t('dugnad.no_announcements') %></p><% } %>
+  <% announcements.forEach(a => { %>
+    <div class="card announcement">
+      <strong><%= a.title %></strong>
+      <p class="desc"><%= a.message %></p>
+      <p class="tiny muted"><%= fmtDateTime(a.created_at) %><%= a.updated_at !== a.created_at ? ' · ' + t('dugnad.edited', { date: fmtDateTime(a.updated_at) }) : '' %></p>
+      <details class="inline-details"><summary class="btn btn-sm"><%= t('common.edit') %></summary>
+        <form method="post" action="/dugnad/<%= ev.id %>/announcements/<%= a.id %>/edit" class="form"><input type="hidden" name="next" value="manage#announcements">
+          <label class="field"><span><%= t('dugnad.a_title') %></span><input name="title" value="<%= a.title %>" maxlength="100" required></label>
+          <label class="field"><span><%= t('dugnad.a_message') %></span><textarea name="message" rows="3" maxlength="2000" required><%= a.message %></textarea></label>
+          <p class="tiny muted"><%= t('dugnad.a_edit_note') %></p>
+          <button class="btn btn-primary btn-sm"><%= t('dugnad.save') %></button></form></details>
+      <form method="post" action="/dugnad/<%= ev.id %>/announcements/<%= a.id %>/delete" data-confirm="<%= t('dugnad.confirm_delete_announcement') %>"><input type="hidden" name="next" value="manage#announcements"><button class="btn btn-ghost btn-sm danger-text"><%= t('common.delete') %></button></form>
+    </div>
+  <% }) %>
+</section>
+
+<%# ---------- Finish ---------- %>
+<section id="finish" class="card">
+  <h2><%= t('dugnad.finish') %></h2>
+  <p class="small muted"><%= t('dugnad.finish_help') %></p>
+  <a href="/dugnad/<%= ev.id %>/complete" class="btn btn-primary btn-block"><%= t('dugnad.complete_btn') %></a>
+  <form method="post" action="/dugnad/<%= ev.id %>/cancel" data-confirm="<%= t('dugnad.confirm_cancel') %>">
+    <p class="tiny muted"><%= t('dugnad.cancel_help') %></p>
+    <button class="btn btn-ghost btn-block danger-text"><%= t('dugnad.cancel_event') %></button></form>
+</section>
+<%- include('../partials/bottom') %>

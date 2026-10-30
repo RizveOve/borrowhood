@@ -3,11 +3,11 @@ const { db, tx } = require('../db');
 const { requireAuth, flash, isAdmin } = require('../auth');
 const { getItem, canManage } = require('../items');
 const { notify, managersOf } = require('../notify');
-const { today, addDays, daysBetween, isISODate, photoStep } = require('../util');
+const { today, addDays, photoStep } = require('../util');
+const { requestLoan, overlaps } = require('../loan-requests');
 const { savePhoto, ALLOWED_TYPES } = require('../storage');
 const multer = require('multer');
 
-const MAX_DAYS = 30;
 const MAX_LOAN_PHOTOS = 6; // per step (pickup / hand-back)
 
 const loanPhotoUpload = multer({
@@ -16,37 +16,17 @@ const loanPhotoUpload = multer({
   fileFilter: (req, file, cb) => cb(null, ALLOWED_TYPES.includes(file.mimetype)),
 }).array('photos', MAX_LOAN_PHOTOS);
 
-const overlapQuery = db.prepare(`SELECT 1 FROM loans
-  WHERE item_id = ? AND id <> ? AND status = 'approved' AND start_date <= ? AND end_date >= ?`);
-const overlaps = (itemId, start, end, exceptId = 0) => !!overlapQuery.get(itemId, exceptId, end, start);
-
 router.post('/items/:id/request', requireAuth, (req, res) => {
   const item = getItem(req.params.id);
   if (!item) return res.sendStatus(404);
   const b = req.body || {};
-  const start = String(b.start_date || '');
-  const end = String(b.end_date || '');
-  const message = String(b.message || '').trim().slice(0, 500);
-  const t = today();
+  const result = requestLoan(item, req.user, {
+    start: String(b.start_date || ''),
+    end: String(b.end_date || ''),
+    message: String(b.message || '').trim().slice(0, 500),
+  });
   // Errors are passed back as translation keys and shown on the item page.
-  const back = (key) => res.redirect(`/items/${item.id}?error=${key}#request`);
-
-  if (item.owner_id === req.user.id) return back('err.own_item');
-  if (!isISODate(start) || !isISODate(end)) return back('err.dates');
-  if (start < t) return back('err.past');
-  if (end < start) return back('err.order');
-  if (daysBetween(start, end) > MAX_DAYS) return back('err.max_days');
-  if (overlaps(item.id, start, end)) return back('err.booked');
-  if (db.prepare("SELECT 1 FROM loans WHERE item_id = ? AND borrower_id = ? AND status = 'pending'").get(item.id, req.user.id)) {
-    return back('err.dup');
-  }
-
-  db.prepare('INSERT INTO loans (item_id, borrower_id, start_date, end_date, message) VALUES (?, ?, ?, ?, ?)')
-    .run(item.id, req.user.id, start, end, message || null);
-  for (const m of managersOf(item)) {
-    notify(m, (x) => x.t('n.request', { name: req.user.name, title: item.title, from: x.d(start), to: x.d(end) }),
-      '/loans?tab=lending', { email: true, subject: (x) => x.t('mail.request', { title: item.title }) });
-  }
+  if (result.error) return res.redirect(`/items/${item.id}?error=${result.error}#request`);
   flash(req, 'ok', req.t('flash.requested'));
   res.redirect('/loans?tab=borrowing');
 });
@@ -65,6 +45,7 @@ router.get('/loans', requireAuth, (req, res) => {
   const borrowing = db.prepare(`${loanSelect} WHERE l.borrower_id = ? ${order}`).all(req.user.id);
   attachPhotos([...lending, ...borrowing]);
   attachIssues([...lending, ...borrowing]);
+  attachDugnad([...lending, ...borrowing]);
   let tab = req.query.tab;
   if (tab !== 'lending' && tab !== 'borrowing') {
     tab = lending.some((l) => l.status === 'pending') ? 'lending' : 'borrowing';
@@ -179,6 +160,17 @@ function attachPhotos(loans) {
     // The same loan can be in both lists (an admin borrowing a shelf item); fill each copy.
     for (const l of loans) if (l.id === p.loan_id) (p.kind === 'pickup' ? l.pickupPhotos : l.returnPhotos).push(p);
   }
+}
+
+// Loans requested for a dugnad say so, with a link to it. The loan itself is an ordinary loan.
+const dugnadForLoans = db.prepare(`SELECT l.loan_id, e.id, e.title FROM dugnad_equipment_links l
+  JOIN dugnad_equipment_requirements r ON r.id = l.requirement_id JOIN dugnad_events e ON e.id = r.event_id
+  WHERE l.loan_id IN (SELECT value FROM json_each(?))`);
+
+function attachDugnad(loans) {
+  if (!loans.length) return;
+  const found = new Map(dugnadForLoans.all(JSON.stringify([...new Set(loans.map((l) => l.id))])).map((r) => [r.loan_id, r]));
+  for (const l of loans) l.dugnad = found.get(l.id) || null;
 }
 
 // The borrower confirms each handover with photos: when they get the item and when they give it back.
