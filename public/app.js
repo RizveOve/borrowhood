@@ -119,6 +119,72 @@ document.querySelectorAll('[data-photo-step]').forEach((form) => {
   });
 });
 
+// Full-screen photo viewer for loan and problem photos. Links work as plain links without JS.
+(() => {
+  const links = document.querySelectorAll('a[data-lightbox]');
+  if (!links.length) return;
+  const box = document.createElement('div');
+  box.className = 'lightbox';
+  box.hidden = true;
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-modal', 'true');
+  box.innerHTML = '<div class="lb-top"><span class="lb-count"></span><button type="button" class="lb-close" aria-label="Close">×</button></div>'
+    + '<div class="lb-stage"><button type="button" class="lb-prev" aria-label="Previous">‹</button><img alt=""><button type="button" class="lb-next" aria-label="Next">›</button></div>'
+    + '<div class="lb-caption"></div>';
+  document.body.appendChild(box);
+  const img = box.querySelector('img');
+  const count = box.querySelector('.lb-count');
+  const caption = box.querySelector('.lb-caption');
+  let group = [];
+  let index = 0;
+  let opener = null;
+
+  const show = (i) => {
+    index = (i + group.length) % group.length;
+    const a = group[index];
+    img.src = a.href;
+    img.alt = a.querySelector('img')?.alt || '';
+    caption.textContent = a.dataset.caption || '';
+    count.textContent = group.length > 1 ? `${index + 1} / ${group.length}` : '';
+    box.classList.toggle('single', group.length < 2);
+  };
+  const close = () => {
+    box.hidden = true;
+    img.removeAttribute('src');
+    document.body.style.overflow = '';
+    opener?.focus();
+  };
+  links.forEach((a) => a.addEventListener('click', (e) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey) return; // let people open the photo in a new tab
+    e.preventDefault();
+    opener = a;
+    group = [...document.querySelectorAll(`a[data-lightbox="${CSS.escape(a.dataset.lightbox)}"]`)];
+    show(group.indexOf(a));
+    box.hidden = false;
+    document.body.style.overflow = 'hidden';
+    box.querySelector('.lb-close').focus();
+  }));
+  box.querySelector('.lb-close').addEventListener('click', close);
+  box.querySelector('.lb-prev').addEventListener('click', () => show(index - 1));
+  box.querySelector('.lb-next').addEventListener('click', () => show(index + 1));
+  box.addEventListener('click', (e) => { if (e.target === box || e.target.classList.contains('lb-stage')) close(); });
+  document.addEventListener('keydown', (e) => {
+    if (box.hidden) return;
+    if (e.key === 'Escape') close();
+    else if (e.key === 'ArrowLeft') show(index - 1);
+    else if (e.key === 'ArrowRight') show(index + 1);
+  });
+  // Swipe left/right on phones.
+  let startX = null;
+  box.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; }, { passive: true });
+  box.addEventListener('touchend', (e) => {
+    if (startX === null) return;
+    const dx = e.changedTouches[0].clientX - startX;
+    startX = null;
+    if (Math.abs(dx) > 50 && group.length > 1) show(index + (dx < 0 ? 1 : -1));
+  });
+})();
+
 // Browse filters apply as soon as they change (the Apply button is only needed without JS).
 document.querySelectorAll('form[data-autosubmit]').forEach((form) => {
   form.querySelectorAll('.js-hide').forEach((el) => (el.hidden = true));
