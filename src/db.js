@@ -114,6 +114,28 @@ CREATE TABLE IF NOT EXISTS loan_photos (
 );
 
 CREATE INDEX IF NOT EXISTS idx_loan_photos_loan ON loan_photos(loan_id);
+
+-- A problem the owner found when the item came back (damage, missing parts). Ends the loan
+-- like "Mark returned", tells the borrower and shows up for the admin.
+CREATE TABLE IF NOT EXISTS loan_issues (
+  id          INTEGER PRIMARY KEY,
+  loan_id     INTEGER NOT NULL REFERENCES loans(id) ON DELETE CASCADE,
+  reporter_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  body        TEXT NOT NULL,
+  status      TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved')),
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  resolved_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS loan_issue_photos (
+  id         INTEGER PRIMARY KEY,
+  issue_id   INTEGER NOT NULL REFERENCES loan_issues(id) ON DELETE CASCADE,
+  photo_key  TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_loan_issues_loan ON loan_issues(loan_id);
+CREATE INDEX IF NOT EXISTS idx_issue_photos_issue ON loan_issue_photos(issue_id);
 -- Messages sent through the About & contact page; handled by the admin.
 CREATE TABLE IF NOT EXISTS contact_messages (
   id          INTEGER PRIMARY KEY,

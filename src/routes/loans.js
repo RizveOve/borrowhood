@@ -44,6 +44,7 @@ router.get('/loans', requireAuth, (req, res) => {
     .all(req.user.id, isAdmin(req.user) ? 1 : 0);
   const borrowing = db.prepare(`${loanSelect} WHERE l.borrower_id = ? ${order}`).all(req.user.id);
   attachPhotos([...lending, ...borrowing]);
+  attachIssues([...lending, ...borrowing]);
   attachDugnad([...lending, ...borrowing]);
   let tab = req.query.tab;
   if (tab !== 'lending' && tab !== 'borrowing') {
@@ -217,5 +218,71 @@ function photoStepRoute(kind) {
 
 router.post('/loans/:id/picked-up', requireAuth, photoStepRoute('pickup'));
 router.post('/loans/:id/hand-back', requireAuth, photoStepRoute('return'));
+
+// --- Reporting a problem when an item comes back -------------------------------------------
+
+const MAX_ISSUE_LEN = 1000;
+
+const issuesForLoans = db.prepare(`SELECT li.*, u.name AS reporter_name FROM loan_issues li
+  LEFT JOIN users u ON u.id = li.reporter_id
+  WHERE li.loan_id IN (SELECT value FROM json_each(?)) ORDER BY li.id`);
+const issuePhotos = db.prepare(`SELECT p.* FROM loan_issue_photos p
+  WHERE p.issue_id IN (SELECT value FROM json_each(?)) ORDER BY p.id`);
+
+// Adds `issue` (with `photos`) to every loan that has a reported problem.
+function attachIssues(loans) {
+  for (const l of loans) l.issue = null;
+  if (!loans.length) return;
+  const issues = issuesForLoans.all(JSON.stringify([...new Set(loans.map((l) => l.id))]));
+  if (!issues.length) return;
+  const byIssue = new Map(issues.map((i) => [i.id, { ...i, photos: [] }]));
+  for (const p of issuePhotos.all(JSON.stringify([...byIssue.keys()]))) byIssue.get(p.issue_id).photos.push(p);
+  for (const issue of byIssue.values()) for (const l of loans) if (l.id === issue.loan_id) l.issue = issue;
+}
+
+// Instead of "Mark returned": the item is back, but something is wrong with it.
+// The loan ends, the problem goes into the owner–borrower chat, and admins see it on the dashboard.
+router.post('/loans/:id/problem', requireAuth, async (req, res) => {
+  const loan = loadLoan(req, res);
+  if (!loan) return;
+  if (!canManage(req.user, loan)) return res.sendStatus(403);
+  const done = (type, key) => {
+    flash(req, type, req.t(key, { n: MAX_LOAN_PHOTOS }));
+    back(req, res, '/loans?tab=lending');
+  };
+
+  const err = await new Promise((resolve) => loanPhotoUpload(req, res, (e) => resolve(e)));
+  if (loan.status !== 'approved') return done('error', 'flash.photo_not_now');
+  if (err && (err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_UNEXPECTED_FILE')) return done('error', 'flash.photo_limit');
+  if (err) return done('error', 'err.photo');
+  const body = String((req.body || {}).body || '').trim().slice(0, MAX_ISSUE_LEN);
+  if (body.length < 5) return done('error', 'flash.problem_text');
+
+  const keys = [];
+  for (const f of req.files || []) keys.push(await savePhoto(f));
+  const { findOrCreate } = require('./messages');
+  const convId = tx(() => {
+    const issueId = Number(db.prepare('INSERT INTO loan_issues (loan_id, reporter_id, body) VALUES (?, ?, ?)')
+      .run(loan.id, req.user.id, body).lastInsertRowid);
+    for (const key of keys) db.prepare('INSERT INTO loan_issue_photos (issue_id, photo_key) VALUES (?, ?)').run(issueId, key);
+    db.prepare("UPDATE loans SET status = 'returned', returned_at = datetime('now') WHERE id = ?").run(loan.id);
+    // Start the conversation with the problem, so both can sort it out there.
+    const id = findOrCreate(loan.item_id, loan.owner_id, loan.borrower_id);
+    db.prepare('INSERT INTO messages (conversation_id, sender_id, body) VALUES (?, ?, ?)')
+      .run(id, req.user.id, `⚠️ ${req.t('loans.problem_msg', { title: loan.title })}\n\n${body}`);
+    db.prepare("UPDATE conversations SET updated_at = datetime('now') WHERE id = ?").run(id);
+    return id;
+  });
+
+  notify(loan.borrower_id, (x) => x.t('n.problem', { name: req.user.name, title: loan.title }), `/messages/${convId}`,
+    { email: true, subject: (x) => x.t('mail.problem', { title: loan.title }) });
+  const admins = db.prepare("SELECT id FROM users WHERE role = 'admin'").all().map((r) => r.id);
+  for (const id of admins) {
+    if (id === req.user.id) continue;
+    notify(id, (x) => x.t('n.problem_admin', { owner: req.user.name, name: loan.borrower_name, title: loan.title }), '/admin#problems');
+  }
+  flash(req, 'ok', req.t('flash.problem_reported', { name: loan.borrower_name }));
+  res.redirect(`/messages/${convId}`);
+});
 
 module.exports = router;

@@ -168,7 +168,9 @@ router.post('/items/:id/delete', requireAuth, async (req, res) => {
   }
   // Pickup/return photos go with the loans (ON DELETE CASCADE), so collect their files first.
   const loanPhotos = db.prepare(`SELECT p.photo_key FROM loan_photos p JOIN loans l ON l.id = p.loan_id
-    WHERE l.item_id = ?`).all(item.id);
+    WHERE l.item_id = ?
+    UNION ALL SELECT p.photo_key FROM loan_issue_photos p JOIN loan_issues li ON li.id = p.issue_id
+    JOIN loans l ON l.id = li.loan_id WHERE l.item_id = ?`).all(item.id, item.id);
   db.prepare('DELETE FROM items WHERE id = ?').run(item.id);
   await deletePhoto(item.photo_key);
   for (const p of loanPhotos) await deletePhoto(p.photo_key);
