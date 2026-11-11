@@ -1,6 +1,7 @@
 const { db } = require('./db');
 const { notify, managersOf } = require('./notify');
 const { today, addDays } = require('./util');
+const { runReminders: runDugnadReminders } = require('./dugnad');
 
 // Return reminder the day before the end date, and a one-time overdue alert.
 function runReminders() {
@@ -27,8 +28,11 @@ function runReminders() {
     db.prepare('UPDATE loans SET overdue_sent = 1, reminder_sent = 1 WHERE id = ?').run(l.id);
   }
 
-  if (due.length || overdue.length) console.log(`[jobs] reminders=${due.length} overdue=${overdue.length}`);
-  return { reminders: due.length, overdue: overdue.length };
+  // Dugnad: a day before, a few hours before, and when a sign-up deadline is near.
+  const dugnad = runDugnadReminders();
+
+  if (due.length || overdue.length || dugnad) console.log(`[jobs] reminders=${due.length} overdue=${overdue.length} dugnad=${dugnad}`);
+  return { reminders: due.length, overdue: overdue.length, dugnad };
 }
 
 function startJobs() {

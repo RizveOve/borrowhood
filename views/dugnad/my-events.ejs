@@ -1,0 +1,28 @@
+<%- include('../partials/top') %>
+<div class="dugnad-page">
+  <a href="/dugnad" class="back">← <%= t('dugnad.title') %></a>
+  <div class="page-head">
+    <h1><%= t('dugnad.my_title') %></h1>
+    <a href="/dugnad/create" class="btn btn-primary"><%= t('dugnad.create') %></a>
+  </div>
+
+  <% const sections = [
+    ['needsWrapUp', 'dugnad.my_wrap'], ['organizing', 'dugnad.my_organizing'], ['drafts', 'dugnad.my_drafts'],
+    ['participating', 'dugnad.my_participating'], ['completed', 'dugnad.my_completed'], ['attended', 'dugnad.my_attended'],
+  ]; const any = sections.some(([k]) => groups[k].length); %>
+  <% if (!any) { %>
+    <div class="card empty" role="status">
+      <p class="mb0"><strong><%= t('dugnad.my_empty') %></strong></p>
+      <p class="muted small"><%= t('dugnad.my_empty_text') %></p>
+      <a href="/dugnad#list" class="btn"><%= t('dugnad.explore') %></a>
+      <a href="/dugnad/create" class="btn btn-primary"><%= t('dugnad.create') %></a>
+    </div>
+  <% } %>
+  <% sections.forEach(([k, label]) => { if (!groups[k].length) return; %>
+    <h2><%= t(label) %> <span class="badge"><%= groups[k].length %></span></h2>
+    <ul class="list dugnad-list">
+      <% groups[k].forEach(e => { %><%- include('../partials/dugnad-card', { e, action: nextAction(e) }) %><% }) %>
+    </ul>
+  <% }) %>
+</div>
+<%- include('../partials/bottom') %>

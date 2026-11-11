@@ -34,6 +34,33 @@
 
 <div class="admin-grid">
   <div>
+    <section class="card" id="problems">
+      <div class="row"><h2 class="grow"><%= t('admin.problems') %></h2>
+        <% const openProblems = problems.filter(p => p.status === 'open').length; if (openProblems) { %><span class="badge badge-overdue"><%= t('admin.open_count', { n: openProblems }) %></span><% } %></div>
+      <% if (!problems.length) { %><p class="muted mb0"><%= t('admin.no_problems') %></p><% } %>
+      <ul class="list msgs">
+        <% problems.forEach(p => { %>
+          <li class="msg <%= p.status === 'resolved' ? 'done' : '' %>">
+            <div>
+              <a href="/items/<%= p.item_id %>"><strong><%= p.title %></strong></a> <span class="badge <%= p.status === 'open' ? 'badge-overdue' : '' %>"><%= t('status.' + p.status) %></span>
+              <div class="muted small"><%= t('admin.problem_who', { owner: p.owner_name, name: p.borrower_name }) %> · <%= fmtDate(p.start_date) %> – <%= fmtDate(p.end_date) %> · <%= t('admin.reported') %> <%= fmtDateTime(p.created_at) %></div>
+            </div>
+            <p class="msg-body"><%= p.body %></p>
+            <% if (p.photos.length) { %>
+              <div class="photo-strip">
+                <% p.photos.forEach(ph => { %>
+                  <%- include('partials/loan-photo', { key: ph.photo_key, gallery: 'problem-' + p.id, alt: t('loans.problem_title'), caption: p.title + ' · ' + fmtDateTime(ph.created_at) + ' · ' + p.owner_name }) %>
+                <% }) %>
+              </div>
+            <% } %>
+            <div class="actions">
+              <a class="btn btn-sm" href="mailto:<%= p.owner_email %>,<%= p.borrower_email %>?subject=<%= encodeURIComponent('BorrowHood – ' + p.title) %>"><%= t('admin.email_both') %></a>
+              <form method="post" action="/admin/problems/<%= p.id %>/<%= p.status === 'open' ? 'resolve' : 'reopen' %>"><button class="btn btn-sm <%= p.status === 'open' ? 'btn-primary' : '' %>"><%= p.status === 'open' ? t('admin.resolve') : t('admin.reopen') %></button></form>
+            </div>
+          </li>
+        <% }) %>
+      </ul>
+    </section>
     <section class="card" id="messages">
       <div class="row"><h2 class="grow"><%= t('admin.messages') %></h2>
         <% const openCount = messages.filter(m => m.status === 'open').length; if (openCount) { %><span class="badge badge-pending"><%= t('admin.open_count', { n: openCount }) %></span><% } %></div>

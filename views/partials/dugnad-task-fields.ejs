@@ -1,0 +1,19 @@
+<%# Task fields, shared by the add form and the edit form. Expects `tk` (empty object for a new task). %>
+<label class="field"><span><%= t('dugnad.task_title') %></span>
+  <input name="title" value="<%= tk.title || '' %>" maxlength="100" required placeholder="<%= t('dugnad.task_title_ph') %>"></label>
+<label class="field"><span><%= t('dugnad.f_description') %> <em><%= t('common.optional') %></em></span>
+  <textarea name="description" rows="2" maxlength="1000"><%= tk.description || '' %></textarea></label>
+<div class="split">
+  <label class="field"><span><%= t('dugnad.volunteers_needed') %></span>
+    <input type="number" name="volunteers_needed" value="<%= tk.volunteers_needed || 1 %>" min="1" max="200" inputmode="numeric" required></label>
+  <label class="field"><span><%= t('dugnad.task_priority') %></span>
+    <select name="priority">
+      <% dn.PRIORITIES.forEach(p => { %><option value="<%= p %>" <%= (tk.priority || 'normal') === p ? 'selected' : '' %>><%= t('dugnad.priority.' + p) %></option><% }) %>
+    </select></label>
+</div>
+<div class="split">
+  <label class="field"><span><%= t('dugnad.task_duration') %> <em><%= t('common.optional') %></em></span>
+    <input type="number" name="estimated_minutes" value="<%= tk.estimated_minutes || '' %>" min="1" max="1440" inputmode="numeric" placeholder="60"></label>
+  <label class="field"><span><%= t('dugnad.task_skills') %> <em><%= t('common.optional') %></em></span>
+    <input name="required_skills" value="<%= tk.required_skills || '' %>" maxlength="200"></label>
+</div>

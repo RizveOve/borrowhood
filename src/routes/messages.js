@@ -146,3 +146,5 @@ router.get('/messages/with/:itemId/:userId', requireAuth, (req, res) => {
 });
 
 module.exports = router;
+// Used by the loans page to open the owner–borrower chat when a problem is reported.
+module.exports.findOrCreate = findOrCreate;

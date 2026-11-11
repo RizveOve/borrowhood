@@ -1,6 +1,6 @@
 // English / Norwegian (bokmål) strings. Use t('key', { var }) in views and req.t() in routes.
 const en = {
-  'nav.browse': 'Browse', 'nav.lend': 'Lend', 'nav.loans': 'Loans', 'nav.me': 'Me', 'nav.admin': 'Admin', 'nav.about': 'About', 'nav.messages': 'Messages',
+  'nav.browse': 'Browse', 'nav.lend': 'Lend', 'nav.loans': 'Loans', 'nav.me': 'Me', 'nav.admin': 'Admin', 'nav.about': 'About', 'nav.dugnad': 'Dugnad', 'nav.messages': 'Messages',
   'nav.notifications': 'Notifications', 'nav.profile': 'Your profile', 'nav.language': 'Language',
   'auth.login': 'Log in', 'auth.signup': 'Sign up', 'auth.logout': 'Log out',
   'common.back': 'Back', 'common.save': 'Save', 'common.edit': 'Edit', 'common.delete': 'Delete',
@@ -78,6 +78,16 @@ const en = {
   'loans.photos_pickup': 'At pickup', 'loans.photos_return': 'At return',
   'loans.got_it': "I've got it", 'loans.hand_back': 'Hand it back', 'loans.choose_photos': 'Add photos', 'loans.photos_n': 'Photos: {n}',
   'loans.remove_photo': 'Remove photo', 'loans.confirm_step': "Are these the right photos? You can't change them after confirming.",
+  'loans.problem_btn': 'Report a problem', 'loans.problem_title': 'Problem reported', 'loans.problem_badge': 'Problem',
+  'loans.problem_hint': "Something wrong with the item? Describe it and add photos. This ends the loan and starts a chat with {name}.",
+  'loans.problem_ph': 'e.g. The drill bit is broken and the case is missing.', 'loans.problem_send': 'Send report',
+  'loans.problem_confirm': 'Send this report to {name}? The loan will be closed.', 'loans.problem_msg': 'I reported a problem with "{title}":',
+  'flash.problem_text': 'Describe the problem in a few words.', 'flash.problem_reported': 'Problem reported. Sort it out with {name} here.',
+  'n.problem': '{name} reported a problem with "{title}" after it came back. Open the chat to talk it through.',
+  'mail.problem': 'Problem reported with "{title}"',
+  'n.problem_admin': '{owner} reported a problem with "{title}" returned by {name}.',
+  'admin.problems': 'Reported problems', 'admin.no_problems': 'No problems reported.',
+  'admin.problem_who': '{owner} → lent to {name}', 'admin.reported': 'reported', 'admin.email_both': 'Email both',
   'loans.pickup_hint': 'When you get the item, take photos of it and confirm pickup.',
   'loans.return_hint': "When you give it back, take photos of it and confirm. You can't add more photos after that.",
   'loans.wait_pickup': '{name} confirms pickup with photos.', 'loans.check_return': 'Handed back. Check the item, then mark it returned.',
@@ -178,12 +188,13 @@ const en = {
   'msg.err_empty': 'Write a message first.',
   'msg.n_new': '{name} sent you a message about "{title}": {preview}', 'msg.mail_new': 'New message from {name} about "{title}"',
 
+
   'err.not_found': 'Not found', 'err.not_found_text': "We couldn't find that page.", 'err.server': 'Something went wrong',
   'err.server_text': 'Please try again in a moment.', 'err.forbidden': 'Not allowed', 'err.admins_only': 'Admins only.',
 };
 
 const nb = {
-  'nav.browse': 'Utforsk', 'nav.lend': 'Lån ut', 'nav.loans': 'Lån', 'nav.me': 'Profil', 'nav.admin': 'Admin', 'nav.about': 'Om oss', 'nav.messages': 'Meldinger',
+  'nav.browse': 'Utforsk', 'nav.lend': 'Lån ut', 'nav.loans': 'Lån', 'nav.me': 'Profil', 'nav.admin': 'Admin', 'nav.about': 'Om oss', 'nav.dugnad': 'Dugnad', 'nav.messages': 'Meldinger',
   'nav.notifications': 'Varsler', 'nav.profile': 'Din profil', 'nav.language': 'Språk',
   'auth.login': 'Logg inn', 'auth.signup': 'Registrer deg', 'auth.logout': 'Logg ut',
   'common.back': 'Tilbake', 'common.save': 'Lagre', 'common.edit': 'Rediger', 'common.delete': 'Slett',
@@ -261,6 +272,16 @@ const nb = {
   'loans.photos_pickup': 'Ved henting', 'loans.photos_return': 'Ved levering',
   'loans.got_it': 'Jeg har hentet den', 'loans.hand_back': 'Lever tilbake', 'loans.choose_photos': 'Legg til bilder', 'loans.photos_n': 'Bilder: {n}',
   'loans.remove_photo': 'Fjern bildet', 'loans.confirm_step': 'Er dette de riktige bildene? Du kan ikke endre dem etter at du har bekreftet.',
+  'loans.problem_btn': 'Meld fra om et problem', 'loans.problem_title': 'Problem meldt', 'loans.problem_badge': 'Problem',
+  'loans.problem_hint': 'Er noe galt med tingen? Beskriv det og legg til bilder. Lånet avsluttes, og du får en chat med {name}.',
+  'loans.problem_ph': 'f.eks. Boret er knekt og kofferten mangler.', 'loans.problem_send': 'Send melding',
+  'loans.problem_confirm': 'Sende dette til {name}? Lånet blir avsluttet.', 'loans.problem_msg': 'Jeg har meldt fra om et problem med «{title}»:',
+  'flash.problem_text': 'Beskriv problemet med noen ord.', 'flash.problem_reported': 'Problemet er meldt. Finn ut av det med {name} her.',
+  'n.problem': '{name} har meldt fra om et problem med «{title}» etter at den ble levert. Åpne chatten for å snakke om det.',
+  'mail.problem': 'Problem meldt med «{title}»',
+  'n.problem_admin': '{owner} har meldt fra om et problem med «{title}», levert av {name}.',
+  'admin.problems': 'Meldte problemer', 'admin.no_problems': 'Ingen problemer meldt.',
+  'admin.problem_who': '{owner} → lånt ut til {name}', 'admin.reported': 'meldt', 'admin.email_both': 'Send e-post til begge',
   'loans.pickup_hint': 'Når du henter tingen, ta bilder av den og bekreft hentingen.',
   'loans.return_hint': 'Når du leverer den tilbake, ta bilder av den og bekreft. Etterpå kan du ikke legge til flere bilder.',
   'loans.wait_pickup': '{name} bekrefter hentingen med bilder.', 'loans.check_return': 'Levert tilbake. Sjekk tingen, og merk den som levert.',
@@ -361,9 +382,14 @@ const nb = {
   'msg.err_empty': 'Skriv en melding først.',
   'msg.n_new': '{name} sendte deg en melding om «{title}»: {preview}', 'msg.mail_new': 'Ny melding fra {name} om «{title}»',
 
+
   'err.not_found': 'Fant ikke siden', 'err.not_found_text': 'Vi fant ikke det du lette etter.', 'err.server': 'Noe gikk galt',
   'err.server_text': 'Prøv igjen om litt.', 'err.forbidden': 'Ikke tillatt', 'err.admins_only': 'Kun for admin.',
 };
+
+// Dugnad texts live in their own file.
+Object.assign(en, require('./i18n-dugnad').en);
+Object.assign(nb, require('./i18n-dugnad').nb);
 
 const DICTS = { en, nb };
 const LANGS = Object.keys(DICTS);

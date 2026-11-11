@@ -1,0 +1,11 @@
+<%- include('../partials/top') %>
+<div class="empty published" role="status">
+  <p class="big" aria-hidden="true">🎉</p>
+  <h1><%= t('dugnad.published_title') %></h1>
+  <p class="muted"><%= t('dugnad.published_text', { title: ev.title }) %></p>
+  <p><a href="/dugnad/<%= ev.id %>" class="btn btn-primary"><%= t('dugnad.view_event') %></a></p>
+  <p><button type="button" class="btn" data-share="/dugnad/<%= ev.id %>" data-share-text="<%= ev.title %>" data-copied="<%= t('dugnad.link_copied') %>"><%= t('dugnad.share') %></button>
+    <a href="/dugnad/<%= ev.id %>/manage" class="btn"><%= t('dugnad.manage') %></a></p>
+  <p class="small muted"><%= t('dugnad.published_next') %></p>
+</div>
+<%- include('../partials/bottom') %>

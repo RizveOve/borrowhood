@@ -8,7 +8,8 @@
     "start": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning src/server.js",
     "dev": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning --watch src/server.js",
     "seed:demo": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning scripts/seed-demo.js",
-    "build": "node scripts/build.js"
+    "build": "node scripts/build.js",
+    "test": "node --disable-warning=ExperimentalWarning --test test/*.test.js"
   },
   "engines": {
     "node": ">=22.13"
