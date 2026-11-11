@@ -29,7 +29,7 @@ AWS re/Start Portfolio Project.
 | Views | EJS (server-rendered) + one CSS file | No build step, fast on phones |
 | Database | SQLite (built-in `node:sqlite`) | No DB server to run, file on EBS |
 | Photos | Amazon S3 (private bucket), local disk in dev | Served through the app, so the bucket is never public |
-| Email | Amazon SES, console in dev | Reminders and request emails |
+| Email | SNS → SQS → Amazon SES on AWS, console in dev | Queued and retried, never slows a page |
 | Reminders | Hourly in-process job | Day-before reminder and overdue alert |
 
 ## Run locally
@@ -78,34 +78,76 @@ What runs where on Netlify:
 
 Limits to know: this setup is meant for a demo or a small community, not heavy traffic. Photos must be under 4 MB, but phones resize them automatically. To test the Netlify setup locally, run `npx netlify-cli dev`.
 
-## AWS architecture
+## Deploy to AWS (low cost)
+
+One small EC2 instance runs the app, and everything around it uses AWS free tiers. The frontend and backend are separated: visitors only ever talk to CloudFront, which serves the frontend files from a private S3 bucket and forwards page requests to an EC2 instance that nobody else can reach.
 
 ```
- Phone browser ──HTTP(S)──► EC2 (Amazon Linux 2023, t3.micro)
-                              nginx :80 ─► Node app :3000 ─► SQLite on EBS
-                                               │
-                                IAM role ──────┼──► S3  (item photos, private)
-                                               └──► SES (reminder emails)
-                              CloudWatch Logs / Alarms (optional)
+                         ┌──► S3 frontend bucket (private, CloudFront only): CSS, JS, icons, stock photos
+Visitor ──HTTPS──► CloudFront (free HTTPS, your domain via ACM)
+                         └──► EC2 t4g.micro (port 80 open to CloudFront only, secret origin header)
+                                nginx ─► Node/Express ─► SQLite on encrypted EBS
+                                   │                       └─ Litestream ─► S3 data bucket (continuous backup)
+                                   ├─► S3 data bucket (item photos, private)
+                                   ├─► SNS topic ─► SQS queue (+ dead-letter queue) ─► mail worker ─► SES
+                                   └─► SSM Parameter Store (settings, secrets)
+CloudWatch: logs (14 days), disk/memory metrics, alarms ─► SNS ─► your email   ·   AWS Budgets ─► your email
 ```
 
-### Deploy steps
+| Service | Used for | Cost |
+|---|---|---|
+| EC2 t4g.micro (Graviton), standard CPU credits | The app | ~$6/month |
+| Elastic IP (public IPv4) | Fixed origin address for CloudFront | ~$3.60/month |
+| EBS gp3 8 GB, encrypted | System + SQLite database | ~$0.70/month |
+| CloudFront | HTTPS, CDN for frontend files, the only way in | Free tier |
+| S3 (2 buckets) + gateway endpoint | Frontend files, photos, database backups | Cents |
+| SNS + SQS | Email queue with retries and a dead-letter queue | Free tier |
+| SES | Emails | $0.10 per 1,000 |
+| SSM | Parameter Store, Session Manager (no SSH), Run Command (deploys) | Free |
+| CloudWatch | Logs, 4 alarms (auto-recover, auto-reboot, disk, failed emails) | Free tier |
+| ACM, Route 53 (optional) | Certificate; DNS at $0.50/month | Free / $0.50 |
 
-1. **S3:** create a private bucket, for example `borrowhood-photos-<team>`, with Block Public Access on.
-2. **SES:** verify a sender address. In the SES sandbox you must also verify each recipient address, so verify your team's emails for the demo.
-3. **IAM role for EC2:** grant `s3:PutObject`, `s3:GetObject` and `s3:DeleteObject` on `arn:aws:s3:::<bucket>/items/*`, plus `ses:SendEmail`.
-4. **Security group:** allow inbound 80 (and 443 if you add HTTPS) from anywhere, and 22 from your IP only.
-5. **EC2:** launch Amazon Linux 2023, attach the role, and paste [deploy/user-data.sh](deploy/user-data.sh) as user data after editing `S3_BUCKET` and `SES_FROM`.
-6. Open `http://<public-ip>`. To get the admin password, run `sudo grep ADMIN_PASSWORD /opt/borrowhood/.env`.
+About **$10/month**, so the $100 sign-up credit lasts around 10 months. Use `t4g.nano` (0.5 GB memory) for about $7. There's deliberately no NAT gateway, load balancer, RDS or Secrets Manager: they would cost more than everything above together.
 
-Logs: `sudo journalctl -u borrowhood -f`. Health check: `GET /health`.
+### Security
 
-### Possible next steps
+- Only CloudFront's IP ranges can reach port 80, and nginx also rejects requests without the secret `X-Origin-Verify` header that CloudFront adds. Port 22 is closed; use `aws ssm start-session`.
+- Both buckets are private, encrypted and HTTPS-only. Only CloudFront can read the frontend bucket.
+- The instance role can only touch its own S3 paths, SNS topic, SQS queue and parameters. No AWS keys are stored anywhere.
+- Secrets (`SESSION_SECRET`, `ADMIN_PASSWORD`) are SecureString parameters, written to a root-only `.env`.
+- The app runs as an unprivileged user in a systemd sandbox and can only write its data and log folders.
+- CloudFront adds HSTS, and only accepts HTTPS from visitors (TLS 1.2+ on a custom domain).
 
-- HTTPS with an ALB and ACM certificate, or CloudFront. Then set `COOKIE_SECURE=1`.
-- Daily EBS snapshots with Data Lifecycle Manager, or move to RDS when running more than one instance.
-- Run the reminder job from EventBridge Scheduler and Lambda instead of in-process.
-- Email verification at sign-up, and rate limiting on login.
+### First deploy
+
+1. Install the [AWS CLI v2](https://aws.amazon.com/cli/) and run `aws configure` (or `aws sso login`).
+2. `cp deploy/aws/config.example.env deploy/aws/config.env` and fill in `ALERT_EMAIL` and `ADMIN_EMAIL`. Leave the domain fields empty for now.
+3. Push your code, then run `deploy/aws/deploy.sh`. It takes about 10 minutes the first time and prints the site URL (`https://xxxx.cloudfront.net`) and how to read the admin password.
+4. Confirm the "AWS Notification" email so alarms reach you.
+
+Every later `deploy/aws/deploy.sh` uploads the frontend files, clears the CloudFront cache and updates the server through SSM. The server always runs the pushed commit of `BRANCH`, so push first.
+
+### Your own domain
+
+1. In **ACM, region us-east-1** (CloudFront requires it), request a certificate for your domain and add the CNAME record it shows. Wait until it says *Issued*.
+2. Set `DOMAIN_NAME` and `CERTIFICATE_ARN` in `config.env`, plus `HOSTED_ZONE_ID` if the domain's DNS is in Route 53, and deploy again.
+3. Without Route 53, point the domain at the `CloudFrontDomain` output yourself: a CNAME for `www.`, or an ALIAS/ANAME/flattened record for the root domain if your DNS provider supports it.
+
+### Email (SES)
+
+1. Set `MAIL_DOMAIN` (e.g. `borrowhood.no`) and `SES_FROM` (e.g. `no-reply@borrowhood.no`) and deploy. With Route 53 the DKIM records are added for you; otherwise the script prints three CNAME records to add.
+2. Add a DMARC record: `_dmarc.<domain>` TXT `v=DMARC1; p=none;`
+3. In the SES console, **request production access**. Until then SES only sends to addresses you have verified.
+
+Emails are published to SNS, queued in SQS and sent by a worker inside the app, so a slow SES call never delays a page and failed emails are retried 5 times before landing in the dead-letter queue (which triggers an alarm).
+
+### Running it
+
+- Logs: CloudWatch log group `/borrowhood/app`, or on the server `tail -f /var/log/borrowhood/app.log`.
+- Shell: `aws ssm start-session --target <InstanceId>`.
+- Change the admin password: update the SSM parameter `/borrowhood/secrets/ADMIN_PASSWORD` and deploy.
+- Backups: Litestream streams every database change to `s3://<DataBucket>/litestream/` (kept 7 days). A fresh instance restores it automatically on boot. The data bucket is kept even if the stack is deleted.
+- Remove everything: `aws cloudformation delete-stack --stack-name borrowhood` (empty the frontend bucket first), then delete the data bucket and the `borrowhood-monthly` budget if you don't need them.
 
 ## Project structure
 
@@ -119,7 +161,8 @@ src/
   auth.js          session user, guards, flash messages
   items.js         item visibility / permission helpers
   storage.js       S3 or local photo storage
-  notify.js        in-app notifications + SES email
+  notify.js        in-app notifications + email (SNS on AWS, else SES / console)
+  mailer.js        sends queued emails from SQS through SES (AWS)
   jobs.js          return reminders and overdue alerts
   routes/          auth, neighbourhood, items, loans, account, admin
   seed.js          shelf items + stock photos
@@ -127,7 +170,7 @@ src/
 views/             EJS templates (mobile-first, desktop layout from 900px)
 seed/photos/       stock photos + credits.json
 public/            style.css, app.js (photo resize, share, confirms)
-deploy/            EC2 user data + systemd unit
+deploy/aws/        CloudFormation template, deploy script, server setup script
 netlify/functions/ Netlify entry points (pages + hourly reminders)
 netlify.toml       Netlify build settings
 scripts/          seed-demo.js, fetch-photos.js

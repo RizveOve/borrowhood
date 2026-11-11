@@ -4,3 +4,4 @@ data/
 .DS_Store
 public/stock/
 .netlify/
+deploy/aws/config.env

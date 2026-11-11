@@ -1,0 +1,536 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  BorrowHood on AWS, built for low cost. CloudFront serves the frontend files from a private S3 bucket
+  and forwards everything else to one EC2 instance that only CloudFront can reach. Photos and database
+  backups go to S3, and emails go SNS -> SQS -> SES. Deploy with deploy/aws/deploy.sh.
+
+Parameters:
+  AlertEmail:
+    Type: String
+    Description: Gets alarm emails (confirm the subscription email AWS sends)
+    AllowedPattern: '.+@.+'
+  AdminEmail:
+    Type: String
+    Description: Login email of the BorrowHood master admin
+    AllowedPattern: '.+@.+'
+  InstanceType:
+    Type: String
+    Default: t4g.micro
+    AllowedValues: [t4g.nano, t4g.micro, t4g.small]
+    Description: Graviton (ARM) instance. t4g.nano is cheapest but has only 0.5 GB of memory.
+  AmiId:
+    Type: AWS::EC2::Image::Id
+    Description: Amazon Linux 2023 arm64 AMI. deploy.sh looks up the latest one on the first deploy and keeps it afterwards, so updates never replace the instance.
+  CloudFrontPrefixListId:
+    Type: String
+    AllowedPattern: '^pl-[a-z0-9]+$'
+    Description: ID of the managed prefix list com.amazonaws.global.cloudfront.origin-facing in this region (deploy.sh looks it up)
+  OriginSecret:
+    Type: String
+    NoEcho: true
+    MinLength: 32
+    Description: Random value CloudFront sends to the instance in the X-Origin-Verify header; requests without it are refused
+  RepoUrl:
+    Type: String
+    Default: https://github.com/RizveOve/borrowhood.git
+  Branch:
+    Type: String
+    Default: main
+  DomainName:
+    Type: String
+    Default: ''
+    Description: Optional site hostname, e.g. borrowhood.no. Empty = use the *.cloudfront.net address.
+  CertificateArn:
+    Type: String
+    Default: ''
+    Description: ACM certificate for DomainName. CloudFront only accepts certificates from us-east-1.
+  HostedZoneId:
+    Type: String
+    Default: ''
+    Description: Optional Route 53 hosted zone for DomainName/MailDomain. Empty = add the DNS records at your registrar.
+  MailDomain:
+    Type: String
+    Default: ''
+    Description: Optional domain to verify in SES (DKIM), e.g. borrowhood.no
+  SesFrom:
+    Type: String
+    Default: ''
+    Description: Sender address, e.g. no-reply@borrowhood.no. Empty = emails are only written to the app log.
+  SeedDemo:
+    Type: String
+    Default: '0'
+    AllowedValues: ['0', '1']
+  AppTimezone:
+    Type: String
+    Default: Europe/Oslo
+
+Rules:
+  CertificateForDomain:
+    RuleCondition: !Not [!Equals [!Ref DomainName, '']]
+    Assertions:
+      - Assert: !Not [!Equals [!Ref CertificateArn, '']]
+        AssertDescription: A custom DomainName needs a CertificateArn (ACM, us-east-1).
+
+Conditions:
+  HasDomain: !Not [!Equals [!Ref DomainName, '']]
+  HasZone: !Not [!Equals [!Ref HostedZoneId, '']]
+  HasSiteRecords: !And [!Condition HasDomain, !Condition HasZone]
+  HasMailDomain: !Not [!Equals [!Ref MailDomain, '']]
+  HasMailRecords: !And [!Condition HasMailDomain, !Condition HasZone]
+  ShowMailRecords: !And [!Condition HasMailDomain, !Not [!Condition HasZone]]
+  IsUsEast1: !Equals [!Ref 'AWS::Region', us-east-1]
+
+Resources:
+  # ---------- Network: one public subnet, no NAT gateway (NAT costs ~$35/month) ----------
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.20.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags: [{ Key: Name, Value: !Ref 'AWS::StackName' }]
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+  GatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties: { VpcId: !Ref Vpc, InternetGatewayId: !Ref InternetGateway }
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.20.0.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: false
+      Tags: [{ Key: Name, Value: !Sub '${AWS::StackName}-public' }]
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties: { VpcId: !Ref Vpc }
+  DefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: GatewayAttachment
+    Properties: { RouteTableId: !Ref RouteTable, DestinationCidrBlock: 0.0.0.0/0, GatewayId: !Ref InternetGateway }
+  SubnetRoutes:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: { SubnetId: !Ref PublicSubnet, RouteTableId: !Ref RouteTable }
+  S3Endpoint:
+    # Free gateway endpoint: S3 traffic (photos, backups) stays on the AWS network.
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref Vpc
+      VpcEndpointType: Gateway
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.s3'
+      RouteTableIds: [!Ref RouteTable]
+
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: HTTP from CloudFront only. No SSH - use SSM Session Manager.
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourcePrefixListId: !Ref CloudFrontPrefixListId
+          Description: CloudFront origin-facing servers
+
+  # A fixed address, so CloudFront's origin survives instance stop/start.
+  ElasticIp:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags: [{ Key: Name, Value: !Ref 'AWS::StackName' }]
+  ElasticIpAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties: { AllocationId: !GetAtt ElasticIp.AllocationId, InstanceId: !Ref Instance }
+
+  # ---------- Storage ----------
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration: { BlockPublicAcls: true, BlockPublicPolicy: true, IgnorePublicAcls: true, RestrictPublicBuckets: true }
+      OwnershipControls: { Rules: [{ ObjectOwnership: BucketOwnerEnforced }] }
+      BucketEncryption: { ServerSideEncryptionConfiguration: [{ ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 } }] }
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: CloudFrontOnly
+            Effect: Allow
+            Principal: { Service: cloudfront.amazonaws.com }
+            Action: s3:GetObject
+            Resource: !Sub '${FrontendBucket.Arn}/*'
+            Condition: { StringEquals: { 'AWS:SourceArn': !Sub 'arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${Distribution}' } }
+          - Sid: HttpsOnly
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource: [!GetAtt FrontendBucket.Arn, !Sub '${FrontendBucket.Arn}/*']
+            Condition: { Bool: { 'aws:SecureTransport': 'false' } }
+
+  # Item photos (items/) and continuous SQLite backups from Litestream (litestream/). Kept if the stack is deleted.
+  DataBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      PublicAccessBlockConfiguration: { BlockPublicAcls: true, BlockPublicPolicy: true, IgnorePublicAcls: true, RestrictPublicBuckets: true }
+      OwnershipControls: { Rules: [{ ObjectOwnership: BucketOwnerEnforced }] }
+      BucketEncryption: { ServerSideEncryptionConfiguration: [{ ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 } }] }
+      LifecycleConfiguration:
+        Rules: [{ Id: AbortUploads, Status: Enabled, AbortIncompleteMultipartUpload: { DaysAfterInitiation: 7 } }]
+  DataBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref DataBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: HttpsOnly
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource: [!GetAtt DataBucket.Arn, !Sub '${DataBucket.Arn}/*']
+            Condition: { Bool: { 'aws:SecureTransport': 'false' } }
+
+  # ---------- Notifications: SNS topic -> SQS queue -> mail worker on the instance -> SES ----------
+  EventsTopic:
+    Type: AWS::SNS::Topic
+    Properties: { TopicName: !Sub '${AWS::StackName}-events' }
+  MailDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties: { MessageRetentionPeriod: 1209600, SqsManagedSseEnabled: true }
+  MailQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 60
+      ReceiveMessageWaitTimeSeconds: 20
+      MessageRetentionPeriod: 345600
+      SqsManagedSseEnabled: true
+      RedrivePolicy: { deadLetterTargetArn: !GetAtt MailDeadLetterQueue.Arn, maxReceiveCount: 5 }
+  MailQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues: [!Ref MailQueue]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: sns.amazonaws.com }
+            Action: sqs:SendMessage
+            Resource: !GetAtt MailQueue.Arn
+            Condition: { ArnEquals: { 'aws:SourceArn': !Ref EventsTopic } }
+  MailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref EventsTopic
+      Protocol: sqs
+      Endpoint: !GetAtt MailQueue.Arn
+      RawMessageDelivery: true
+      FilterPolicyScope: MessageAttributes
+      FilterPolicy: { type: [email] }
+
+  # Alarm emails for you, the operator.
+  OpsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${AWS::StackName}-ops-alerts'
+      Subscription: [{ Protocol: email, Endpoint: !Ref AlertEmail }]
+  OpsTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref OpsTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: cloudwatch.amazonaws.com }
+            Action: sns:Publish
+            Resource: !Ref OpsTopic
+            Condition: { StringEquals: { 'aws:SourceAccount': !Ref 'AWS::AccountId' } }
+
+  SesIdentity:
+    Type: AWS::SES::EmailIdentity
+    Condition: HasMailDomain
+    Properties:
+      EmailIdentity: !Ref MailDomain
+      DkimSigningAttributes: { NextSigningKeyLength: RSA_2048_BIT }
+
+  # ---------- Configuration (read by deploy/aws/setup.sh into the app's .env) ----------
+  AppConfig:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/${AWS::StackName}/config'
+      Type: String
+      Value: !Sub
+        - |
+          PORT=3000
+          NODE_ENV=production
+          APP_URL=${AppUrl}
+          APP_TZ=${AppTimezone}
+          COOKIE_SECURE=1
+          ADMIN_EMAIL=${AdminEmail}
+          SEED_DEMO=${SeedDemo}
+          DB_PATH=/opt/borrowhood/data/borrowhood.db
+          S3_BUCKET=${DataBucket}
+          AWS_REGION=${AWS::Region}
+          SES_FROM=${SesFrom}
+          SNS_TOPIC_ARN=${EventsTopic}
+          MAIL_QUEUE_URL=${MailQueue}
+        - AppUrl: !If [HasDomain, !Sub 'https://${DomainName}', !Sub 'https://${Distribution.DomainName}']
+  OriginSecretParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/${AWS::StackName}/origin-secret'
+      Type: String
+      Value: !Ref OriginSecret
+
+  # ---------- The backend instance ----------
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement: [{ Effect: Allow, Principal: { Service: ec2.amazonaws.com }, Action: sts:AssumeRole }]
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/CloudWatchAgentServerPolicy'
+      Policies:
+        - PolicyName: borrowhood
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [s3:GetObject, s3:PutObject, s3:DeleteObject]
+                Resource: [!Sub '${DataBucket.Arn}/items/*', !Sub '${DataBucket.Arn}/litestream/*']
+              - Effect: Allow
+                Action: [s3:ListBucket, s3:GetBucketLocation]
+                Resource: !GetAtt DataBucket.Arn
+              - Effect: Allow
+                Action: sns:Publish
+                Resource: !Ref EventsTopic
+              - Effect: Allow
+                Action: [sqs:ReceiveMessage, sqs:DeleteMessage, sqs:ChangeMessageVisibility, sqs:GetQueueAttributes]
+                Resource: !GetAtt MailQueue.Arn
+              - Effect: Allow
+                Action: [ses:SendEmail, ses:SendRawEmail]
+                Resource: '*'
+              - Effect: Allow
+                Action: [ssm:GetParameter, ssm:GetParameters, ssm:PutParameter]
+                Resource: !Sub 'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/*'
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties: { Roles: [!Ref InstanceRole] }
+
+  Instance:
+    Type: AWS::EC2::Instance
+    DependsOn: [DefaultRoute, SubnetRoutes, AppConfig, OriginSecretParameter, AppLogGroup]
+    Properties:
+      ImageId: !Ref AmiId
+      InstanceType: !Ref InstanceType
+      IamInstanceProfile: !Ref InstanceProfile
+      # "standard" credits: a busy CPU slows down instead of adding charges ("unlimited" is the t4g default).
+      CreditSpecification: { CPUCredits: standard }
+      NetworkInterfaces:
+        - DeviceIndex: '0'
+          SubnetId: !Ref PublicSubnet
+          GroupSet: [!Ref InstanceSecurityGroup]
+          AssociatePublicIpAddress: false
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs: { VolumeSize: 8, VolumeType: gp3, Encrypted: true, DeleteOnTermination: true }
+      Tags: [{ Key: Name, Value: !Ref 'AWS::StackName' }]
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -euxo pipefail
+          # The instance gets internet access once the Elastic IP is attached; wait for it.
+          imds() { curl -sf -H "X-aws-ec2-metadata-token: $(curl -sfX PUT http://169.254.169.254/latest/api/token -H 'X-aws-ec2-metadata-token-ttl-seconds: 60')" "http://169.254.169.254/latest/meta-data/$1"; }
+          until [ "$(imds public-ipv4 || true)" = "${ElasticIp}" ]; do sleep 5; done
+          dnf install -y git
+          git clone --depth 1 --branch ${Branch} ${RepoUrl} /opt/borrowhood
+          STACK=${AWS::StackName} AWS_REGION=${AWS::Region} bash /opt/borrowhood/deploy/aws/setup.sh
+
+  AppLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties: { LogGroupName: !Sub '/${AWS::StackName}/app', RetentionInDays: 14 }
+
+  # ---------- CloudFront: one HTTPS address for frontend (S3) and backend (EC2) ----------
+  FrontendOac:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub '${AWS::StackName}-frontend'
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+  SecurityHeaders:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Name: !Sub '${AWS::StackName}-security-headers'
+        SecurityHeadersConfig:
+          StrictTransportSecurity: { AccessControlMaxAgeSec: 31536000, Override: true }
+          ContentTypeOptions: { Override: true }
+          FrameOptions: { FrameOption: DENY, Override: false }
+          ReferrerPolicy: { ReferrerPolicy: same-origin, Override: false }
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Ref 'AWS::StackName'
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        PriceClass: PriceClass_100 # Europe + North America edges only: the cheapest class
+        Aliases: !If [HasDomain, [!Ref DomainName], !Ref 'AWS::NoValue']
+        ViewerCertificate: !If
+          - HasDomain
+          - { AcmCertificateArn: !Ref CertificateArn, SslSupportMethod: sni-only, MinimumProtocolVersion: TLSv1.2_2021 }
+          - { CloudFrontDefaultCertificate: true }
+        Origins:
+          - Id: backend
+            # Public DNS name of the Elastic IP (CloudFront origins must be hostnames).
+            DomainName: !Join
+              - ''
+              - - 'ec2-'
+                - !Join ['-', !Split ['.', !Ref ElasticIp]]
+                - !If [IsUsEast1, '.compute-1.amazonaws.com', !Sub '.${AWS::Region}.compute.amazonaws.com']
+            CustomOriginConfig: { HTTPPort: 80, OriginProtocolPolicy: http-only, OriginReadTimeout: 30 }
+            OriginCustomHeaders: [{ HeaderName: X-Origin-Verify, HeaderValue: !Ref OriginSecret }]
+          - Id: frontend
+            DomainName: !GetAtt FrontendBucket.RegionalDomainName
+            S3OriginConfig: { OriginAccessIdentity: '' }
+            OriginAccessControlId: !GetAtt FrontendOac.Id
+        DefaultCacheBehavior:
+          # Pages are personal, so they are never cached: managed CachingDisabled + AllViewerExceptHostHeader.
+          TargetOriginId: backend
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+          CachedMethods: [GET, HEAD]
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+          OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+          ResponseHeadersPolicyId: !Ref SecurityHeaders
+          Compress: true
+        # Frontend files come from S3 and are cached at the edge (managed CachingOptimized).
+        CacheBehaviors:
+          - { PathPattern: /style.css, TargetOriginId: frontend, ViewerProtocolPolicy: redirect-to-https, AllowedMethods: [GET, HEAD], CachedMethods: [GET, HEAD], CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6, ResponseHeadersPolicyId: !Ref SecurityHeaders, Compress: true }
+          - { PathPattern: /app.js, TargetOriginId: frontend, ViewerProtocolPolicy: redirect-to-https, AllowedMethods: [GET, HEAD], CachedMethods: [GET, HEAD], CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6, ResponseHeadersPolicyId: !Ref SecurityHeaders, Compress: true }
+          - { PathPattern: /icon.svg, TargetOriginId: frontend, ViewerProtocolPolicy: redirect-to-https, AllowedMethods: [GET, HEAD], CachedMethods: [GET, HEAD], CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6, ResponseHeadersPolicyId: !Ref SecurityHeaders, Compress: true }
+          - { PathPattern: /manifest.webmanifest, TargetOriginId: frontend, ViewerProtocolPolicy: redirect-to-https, AllowedMethods: [GET, HEAD], CachedMethods: [GET, HEAD], CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6, ResponseHeadersPolicyId: !Ref SecurityHeaders, Compress: true }
+          - { PathPattern: /stock/*, TargetOriginId: frontend, ViewerProtocolPolicy: redirect-to-https, AllowedMethods: [GET, HEAD], CachedMethods: [GET, HEAD], CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6, ResponseHeadersPolicyId: !Ref SecurityHeaders, Compress: true }
+
+  # ---------- DNS (only when a Route 53 hosted zone is given) ----------
+  SiteRecordA:
+    Type: AWS::Route53::RecordSet
+    Condition: HasSiteRecords
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget: { DNSName: !GetAtt Distribution.DomainName, HostedZoneId: Z2FDTNDATAQYW2 }
+  SiteRecordAAAA:
+    Type: AWS::Route53::RecordSet
+    Condition: HasSiteRecords
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: AAAA
+      AliasTarget: { DNSName: !GetAtt Distribution.DomainName, HostedZoneId: Z2FDTNDATAQYW2 }
+  DkimRecord1:
+    Type: AWS::Route53::RecordSet
+    Condition: HasMailRecords
+    Properties: { HostedZoneId: !Ref HostedZoneId, Name: !GetAtt SesIdentity.DkimDNSTokenName1, Type: CNAME, TTL: '1800', ResourceRecords: [!GetAtt SesIdentity.DkimDNSTokenValue1] }
+  DkimRecord2:
+    Type: AWS::Route53::RecordSet
+    Condition: HasMailRecords
+    Properties: { HostedZoneId: !Ref HostedZoneId, Name: !GetAtt SesIdentity.DkimDNSTokenName2, Type: CNAME, TTL: '1800', ResourceRecords: [!GetAtt SesIdentity.DkimDNSTokenValue2] }
+  DkimRecord3:
+    Type: AWS::Route53::RecordSet
+    Condition: HasMailRecords
+    Properties: { HostedZoneId: !Ref HostedZoneId, Name: !GetAtt SesIdentity.DkimDNSTokenName3, Type: CNAME, TTL: '1800', ResourceRecords: [!GetAtt SesIdentity.DkimDNSTokenValue3] }
+
+  # ---------- Monitoring (within CloudWatch's 10 free alarms) ----------
+  SystemCheckAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: AWS hardware problem - the instance is moved to healthy hardware automatically
+      Namespace: AWS/EC2
+      MetricName: StatusCheckFailed_System
+      Dimensions: [{ Name: InstanceId, Value: !Ref Instance }]
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions: [!Sub 'arn:${AWS::Partition}:automate:${AWS::Region}:ec2:recover', !Ref OpsTopic]
+  InstanceCheckAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: The instance stopped responding - it is rebooted automatically
+      Namespace: AWS/EC2
+      MetricName: StatusCheckFailed_Instance
+      Dimensions: [{ Name: InstanceId, Value: !Ref Instance }]
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions: [!Sub 'arn:${AWS::Partition}:automate:${AWS::Region}:ec2:reboot', !Ref OpsTopic]
+  DiskAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Root disk over 85% full
+      Namespace: CWAgent
+      MetricName: disk_used_percent
+      Dimensions: [{ Name: InstanceId, Value: !Ref Instance }]
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 85
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref OpsTopic]
+  MailDeadLetterAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Emails failed 5 times and were moved to the dead-letter queue (check SES)
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions: [{ Name: QueueName, Value: !GetAtt MailDeadLetterQueue.QueueName }]
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref OpsTopic]
+
+Outputs:
+  SiteUrl:
+    Value: !If [HasDomain, !Sub 'https://${DomainName}', !Sub 'https://${Distribution.DomainName}']
+  CloudFrontDomain:
+    Description: Point your domain here (CNAME, or ALIAS/flattened record for a root domain) if DNS is not in Route 53
+    Value: !GetAtt Distribution.DomainName
+  DistributionId:
+    Value: !Ref Distribution
+  InstanceId:
+    Value: !Ref Instance
+  FrontendBucket:
+    Value: !Ref FrontendBucket
+  DataBucket:
+    Value: !Ref DataBucket
+  DkimRecord1:
+    Condition: ShowMailRecords
+    Description: Add at your DNS provider as a CNAME record
+    Value: !Sub '${SesIdentity.DkimDNSTokenName1} CNAME ${SesIdentity.DkimDNSTokenValue1}'
+  DkimRecord2:
+    Condition: ShowMailRecords
+    Description: Add at your DNS provider as a CNAME record
+    Value: !Sub '${SesIdentity.DkimDNSTokenName2} CNAME ${SesIdentity.DkimDNSTokenValue2}'
+  DkimRecord3:
+    Condition: ShowMailRecords
+    Description: Add at your DNS provider as a CNAME record
+    Value: !Sub '${SesIdentity.DkimDNSTokenName3} CNAME ${SesIdentity.DkimDNSTokenValue3}'

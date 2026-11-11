@@ -1,6 +1,7 @@
 // Runs BorrowHood as a normal long-running server (local development and EC2).
 const { app, init } = require('./app');
 const { startJobs } = require('./jobs');
+const { startMailer } = require('./mailer');
 
 if (!process.env.SESSION_SECRET && process.env.NODE_ENV === 'production') {
   console.error('SESSION_SECRET must be set in production');
@@ -12,4 +13,5 @@ const PORT = Number(process.env.PORT) || 3000;
   await init();
   app.listen(PORT, () => console.log(`BorrowHood running on http://localhost:${PORT}`));
   startJobs();
+  startMailer();
 })();
