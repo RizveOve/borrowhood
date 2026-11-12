@@ -1,5 +1,17 @@
 // Dugnad texts (English and Norwegian). Merged into the main dictionaries in i18n.js.
 const en = {
+  // AI planner
+  'dugnad.ai_hint': 'On the Tasks step, Claude can suggest tasks and equipment for you.',
+  'dugnad.ai_title': 'Plan with AI', 'dugnad.ai_intro': 'Claude suggests tasks and equipment from your event details. Nothing is added until you choose.',
+  'dugnad.ai_notes': 'Anything else Claude should know? (optional)', 'dugnad.ai_notes_ph': 'e.g. about 15 people, the bike shed needs clearing out, some kids are coming',
+  'dugnad.ai_suggest': 'Suggest tasks and equipment', 'dugnad.ai_busy': 'Planning… this can take up to 30 seconds',
+  'dugnad.ai_note': 'Your event details are sent to Claude (Anthropic).',
+  'dugnad.ai_review': 'Suggested plan', 'dugnad.ai_review_help': "Untick anything you don't want, then add the rest. You can change everything afterwards.",
+  'dugnad.ai_tip': 'Tip', 'dugnad.ai_people': '{n} people', 'dugnad.ai_minutes': '{n} min', 'dugnad.ai_in_app': '{n} in the app',
+  'dugnad.ai_add': 'Add selected', 'dugnad.ai_discard': 'Discard',
+  'dugnad.ai_added': 'Added {tasks} tasks and {equipment} equipment items.',
+  'dugnad.ai_empty': "Claude couldn't suggest a plan. Add more details to the event or your notes, and try again.",
+  'dugnad.ai_failed': "Planning isn't available right now. Please add tasks yourself.",
   // Landing and overview
   'dugnad.title': 'Dugnad', 'dugnad.eyebrow': 'Norwegian tradition', 'dugnad.heading': 'Many hands make light work.',
   'dugnad.lead': 'Bring your neighbourhood together. Organise community work, share equipment, and make a difference together.',
@@ -204,6 +216,18 @@ const en = {
 };
 
 const nb = {
+  // AI-planlegger
+  'dugnad.ai_hint': 'På steget Oppgaver kan Claude foreslå oppgaver og utstyr for deg.',
+  'dugnad.ai_title': 'Planlegg med AI', 'dugnad.ai_intro': 'Claude foreslår oppgaver og utstyr ut fra detaljene om dugnaden. Ingenting legges til før du velger.',
+  'dugnad.ai_notes': 'Noe mer Claude bør vite? (valgfritt)', 'dugnad.ai_notes_ph': 'f.eks. rundt 15 personer, sykkelboden må ryddes, noen barn blir med',
+  'dugnad.ai_suggest': 'Foreslå oppgaver og utstyr', 'dugnad.ai_busy': 'Planlegger … dette kan ta opptil 30 sekunder',
+  'dugnad.ai_note': 'Detaljene om dugnaden sendes til Claude (Anthropic).',
+  'dugnad.ai_review': 'Foreslått plan', 'dugnad.ai_review_help': 'Fjern haken for det du ikke vil ha, og legg til resten. Du kan endre alt etterpå.',
+  'dugnad.ai_tip': 'Tips', 'dugnad.ai_people': '{n} personer', 'dugnad.ai_minutes': '{n} min', 'dugnad.ai_in_app': '{n} i appen',
+  'dugnad.ai_add': 'Legg til valgte', 'dugnad.ai_discard': 'Forkast',
+  'dugnad.ai_added': 'La til {tasks} oppgaver og {equipment} ting på utstyrslista.',
+  'dugnad.ai_empty': 'Claude klarte ikke å foreslå en plan. Legg til flere detaljer om dugnaden eller i notatet, og prøv igjen.',
+  'dugnad.ai_failed': 'Planlegging er ikke tilgjengelig akkurat nå. Legg til oppgaver selv.',
   'dugnad.title': 'Dugnad', 'dugnad.eyebrow': 'Norsk tradisjon', 'dugnad.heading': 'Mange hender gjør arbeidet lett.',
   'dugnad.lead': 'Samle nabolaget. Organiser felles innsats, del utstyr og gjør en forskjell sammen.',
   'dugnad.text': 'En dugnad er en arbeidsdag der naboer samles for å ta vare på stedet de deler. Rake løv, rydde i bakgården, male sykkelboden, sette opp teltet til sommerfesten. Alle gjør litt, så ingen må gjøre mye, og som regel ender det med kaffe og en prat.',

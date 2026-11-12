@@ -1,0 +1,42 @@
+  <% if (aiEnabled() && plan) { %>
+  <form method="post" action="/dugnad/<%= id %>/ai-plan/apply" id="ai-plan" class="card card-soft ai-plan">
+    <h2>✨ <%= t('dugnad.ai_review') %></h2>
+    <p class="small muted"><%= t('dugnad.ai_review_help') %></p>
+    <% if (plan.notes) { %><p class="small"><strong><%= t('dugnad.ai_tip') %>:</strong> <%= plan.notes %></p><% } %>
+    <% if (plan.tasks.length) { %>
+      <h3><%= t('dugnad.tasks') %></h3>
+      <div class="ai-pick">
+        <% plan.tasks.forEach(tk => { %>
+          <label class="check"><input type="checkbox" name="task" value="<%= JSON.stringify(tk) %>" checked>
+            <span><strong><%= tk.title %></strong>
+              <span class="small muted"> · <%= t('dugnad.ai_people', { n: tk.volunteers_needed }) %><%= tk.estimated_minutes ? ' · ' + t('dugnad.ai_minutes', { n: tk.estimated_minutes }) : '' %> · <%= t('dugnad.priority.' + tk.priority) %></span>
+              <% if (tk.description) { %><br><span class="small"><%= tk.description %></span><% } %></span></label>
+        <% }) %>
+      </div>
+    <% } %>
+    <% if (plan.equipment.length) { %>
+      <h3><%= t('dugnad.equipment') %></h3>
+      <div class="ai-pick">
+        <% plan.equipment.forEach(eq => { %>
+          <label class="check"><input type="checkbox" name="equipment" value="<%= JSON.stringify({ name: eq.name, quantity: eq.quantity, essential: eq.essential, for_task: eq.for_task }) %>" checked>
+            <span><strong><%= eq.name %></strong> × <%= eq.quantity %>
+              <span class="small muted"> · <%= t(eq.essential ? 'dugnad.essential' : 'dugnad.optional') %><%= eq.for_task ? ' · ' + eq.for_task : '' %></span>
+              <% if (eq.available) { %><span class="badge badge-ok"><%= t('dugnad.ai_in_app', { n: eq.available }) %></span><% } %></span></label>
+        <% }) %>
+      </div>
+    <% } %>
+    <div class="wizard-nav">
+      <button class="btn btn-primary"><%= t('dugnad.ai_add') %></button>
+      <a class="btn btn-ghost" href="/dugnad/<%= id %>/edit/4"><%= t('dugnad.ai_discard') %></a>
+    </div>
+  </form>
+  <% } else if (aiEnabled()) { %>
+  <form method="post" action="/dugnad/<%= id %>/ai-plan" id="ai-plan" class="card card-soft ai-plan">
+    <h2>✨ <%= t('dugnad.ai_title') %></h2>
+    <p class="small muted"><%= t('dugnad.ai_intro') %></p>
+    <label class="field"><span><%= t('dugnad.ai_notes') %></span>
+      <textarea name="notes" rows="2" maxlength="500" placeholder="<%= t('dugnad.ai_notes_ph') %>"><%= aiNotes %></textarea></label>
+    <button class="btn btn-primary btn-block" data-busy="<%= t('dugnad.ai_busy') %>"><%= t('dugnad.ai_suggest') %></button>
+    <p class="tiny muted mb0"><%= t('dugnad.ai_note') %></p>
+  </form>
+  <% } %>

@@ -557,3 +557,17 @@ td.actions { flex-wrap: nowrap; }
   .facts { grid-template-columns: 1fr; gap: 0; }
   .facts dd { margin-bottom: 8px; }
 }
+
+/* AI: "describe the job" search and the dugnad planner */
+.ask-card { margin-top: 0; }
+.ask-label { display: block; font-weight: 600; margin-bottom: 8px; }
+.ask-row { display: flex; gap: 8px; margin-bottom: 6px; }
+.ask-row input { flex: 1; min-width: 0; }
+.ask-row .btn { flex: none; }
+.ask-tip { margin-top: 0; }
+.ask-need { margin: 22px 0; }
+.ask-need h2 { font-size: 18px; margin-bottom: 10px; }
+.ai-pick { display: grid; gap: 12px; margin: 8px 0 16px; }
+.ai-pick .badge { margin-left: 6px; }
+.row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.ai-hint { margin: 8px 0 0; }

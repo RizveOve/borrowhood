@@ -1,0 +1,23 @@
+<%- include('partials/top') %>
+<a href="/items" class="back">← <%= t('browse.title') %></a>
+<h1><%= t('ask.title', { q }) %></h1>
+<%- include('partials/ask-form', { q }) %>
+
+<% if (error) { %>
+  <div class="flash flash-error" role="alert"><%= t(error) %></div>
+<% } else { %>
+  <p class="muted"><%= t('ask.intro') %></p>
+  <% if (tip) { %><p class="card ask-tip"><strong><%= t('ask.tip') %>:</strong> <%= tip %></p><% } %>
+  <% needs.forEach(n => { %>
+    <section class="ask-need">
+      <h2><%= n.name %> <span class="small muted">· <%= n.why %></span></h2>
+      <% if (n.items.length) { %>
+        <ul class="grid"><% n.items.forEach(it => { %><%- include('partials/item-tile', { it }) %><% }) %></ul>
+      <% } else { %>
+        <p class="muted small"><%= t('ask.none') %></p>
+      <% } %>
+    </section>
+  <% }) %>
+<% } %>
+<p class="small"><a href="/items?q=<%= encodeURIComponent(q) %>"><%= t('ask.search_all', { q }) %></a></p>
+<%- include('partials/bottom') %>

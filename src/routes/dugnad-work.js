@@ -197,6 +197,44 @@ router.post('/dugnad/:id/equipment/template', ...manage, (req, res) => {
   backTo(req, res, `/dugnad/${req.ev.id}/edit/5`);
 });
 
+// ---- AI plan: add the suggestions the organiser kept ----------------------------------------------
+// Each suggestion goes through the same checks as a task or item added by hand.
+router.post('/dugnad/:id/ai-plan/apply', ...manage, (req, res) => {
+  const { ev } = req;
+  const b = req.body || {};
+  const picked = (v) => [].concat(v || []).slice(0, 20).map((s) => {
+    try { return JSON.parse(s); } catch { return null; }
+  }).filter((x) => x && typeof x === 'object');
+  const have = new Set(db.prepare('SELECT LOWER(equipment_name) AS n FROM dugnad_equipment_requirements WHERE event_id = ?').all(ev.id).map((r) => r.n));
+  const taskIds = new Map();
+  let tasks = 0;
+  let equipment = 0;
+  tx(() => {
+    let order = db.prepare('SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM dugnad_tasks WHERE event_id = ?').get(ev.id).n;
+    for (const s of picked(b.task)) {
+      const { v, error } = readTask({ title: s.title, description: s.description, estimated_minutes: s.estimated_minutes, volunteers_needed: s.volunteers_needed, priority: s.priority });
+      if (error) continue;
+      const r = db.prepare(`INSERT INTO dugnad_tasks (event_id, title, description, estimated_minutes, volunteers_needed, priority, sort_order, created_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(ev.id, v.title, v.description || null, v.estimated_minutes, v.volunteers_needed, v.priority, order++, req.user.id);
+      taskIds.set(v.title, Number(r.lastInsertRowid));
+      tasks++;
+    }
+    for (const s of picked(b.equipment)) {
+      const { v, error } = readRequirement(req, {
+        equipment_name: s.name, quantity_needed: s.quantity, essential: s.essential === false ? 'optional' : 'essential',
+        needed_from: ev.event_date, needed_until: ev.event_date,
+      });
+      if (error || have.has(v.equipment_name.toLowerCase())) continue;
+      have.add(v.equipment_name.toLowerCase());
+      db.prepare(`INSERT INTO dugnad_equipment_requirements (event_id, task_id, equipment_name, quantity_needed, essential, needed_from, needed_until)
+        VALUES (?, ?, ?, ?, ?, ?, ?)`).run(ev.id, taskIds.get(text(s.for_task, 100)) ?? null, v.equipment_name, v.quantity_needed, v.essential, v.needed_from, v.needed_until);
+      equipment++;
+    }
+  });
+  flash(req, 'ok', req.t('dugnad.ai_added', { tasks, equipment }));
+  res.redirect(`/dugnad/${ev.id}/edit/4`);
+});
+
 // ---- Find equipment and borrow it through the existing loan workflow -------------------------------
 
 router.get('/dugnad/:id/equipment/:rid/find', ...manage, (req, res) => {

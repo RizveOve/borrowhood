@@ -1,0 +1,8 @@
+<form method="get" action="/items/ask" class="card card-soft ask-card" role="search">
+  <label for="ask-q" class="ask-label">✨ <%= t('ask.label') %></label>
+  <div class="ask-row">
+    <input id="ask-q" name="q" value="<%= q %>" maxlength="200" placeholder="<%= t('ask.placeholder') %>" required>
+    <button class="btn btn-primary" data-busy="<%= t('ask.busy') %>"><%= t('ask.button') %></button>
+  </div>
+  <p class="tiny muted mb0"><%= t('ask.note') %></p>
+</form>

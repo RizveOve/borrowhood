@@ -8,6 +8,7 @@ const { notify } = require('../notify');
 const { savePhoto, deletePhoto, ALLOWED_TYPES } = require('../storage');
 const { today } = require('../util');
 const dn = require('../dugnad');
+const ai = require('../ai');
 const { withEvent, managerOnly, editable, backTo, text, int, dateOrNull, timeOrNull, urlOrNull, bool, hoodMembers } = require('./dugnad-shared');
 
 const upload = multer({
@@ -42,9 +43,9 @@ router.get('/dugnad/my-events', requireAuth, (req, res) => {
 
 // ---- Create and edit (a draft is saved at every step, so nothing is lost moving between steps) ------
 
-function wizard(req, res, ev, step, values, error = null, status = 200) {
+function wizard(req, res, ev, step, values, error = null, status = 200, extra = {}) {
   const hoodId = ev ? ev.neighbourhood_id : req.user.neighbourhood_id;
-  const data = { title: req.t('dugnad.wizard_title'), ev, step, STEPS, v: values, error, CATEGORIES: dn.CATEGORIES, wide: true };
+  const data = { title: req.t('dugnad.wizard_title'), ev, step, STEPS, v: values, error, CATEGORIES: dn.CATEGORIES, wide: true, plan: null, aiNotes: '', ...extra };
   if (step === 1 && dn.isAdmin(req.user)) data.hoods = db.prepare('SELECT id, name FROM neighbourhoods ORDER BY name').all();
   if (step === 3) {
     data.members = hoodMembers(hoodId, ev ? ev.organizer_id : req.user.id);
@@ -135,6 +136,31 @@ router.get('/dugnad/:id/edit/:step', requireAuth, withEvent, managerOnly, editab
   const step = int(req.params.step, 1, STEPS);
   if (!step) return res.sendStatus(404);
   wizard(req, res, req.ev, step, req.ev);
+});
+
+// AI: suggest tasks and equipment from the event details. The plan is shown on the Tasks step,
+// and nothing is saved until the organiser picks what to keep (POST .../ai-plan/apply in dugnad-work.js).
+router.post('/dugnad/:id/ai-plan', requireAuth, withEvent, managerOnly, editable, async (req, res) => {
+  const { ev } = req;
+  if (!ai.enabled()) return res.redirect(`/dugnad/${ev.id}/edit/4`);
+  const notes = text((req.body || {}).notes, 500);
+  const again = (key, status) => wizard(req, res, ev, 4, ev, req.t(key), status, { aiNotes: notes });
+  if (!ai.allow(req.user.id, 'plan')) return again('ai.limit', 429);
+  const existing = {
+    tasks: dn.tasksOf(ev.id).map((tk) => tk.title),
+    equipment: db.prepare('SELECT equipment_name FROM dugnad_equipment_requirements WHERE event_id = ?').all(ev.id).map((r) => r.equipment_name),
+  };
+  let plan;
+  try {
+    plan = await ai.suggestPlan({ ev, notes, lang: req.lang, existing });
+  } catch (e) {
+    console.error('[ai] dugnad plan failed:', e.message);
+    return again('dugnad.ai_failed', 502);
+  }
+  if (!plan) return again('dugnad.ai_empty', 422);
+  // How many matching items neighbours lend that are free on the day (the same search as "Find").
+  for (const item of plan.equipment) item.available = dn.searchEquipment(ev, req.user, item.name).filter((i) => !i.booked).length;
+  wizard(req, res, ev, 4, ev, null, 200, { plan, aiNotes: notes });
 });
 
 router.post('/dugnad/:id/edit/:step', requireAuth, withEvent, managerOnly, editable, async (req, res) => {

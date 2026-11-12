@@ -22,6 +22,8 @@ AWS re/Start Portfolio Project.
 - **Master admin:** a dashboard with stats, overdue loans, every neighbourhood, user, item and loan. The admin can delete users, items and neighbourhoods, rotate join codes and run the reminder job on demand.
 - **Organisation items (the BorrowHood shelf):** items owned by BorrowHood itself, visible to every neighbourhood, with requests approved by the admin. Six are seeded on first start.
 - **AI listing from a photo (optional):** after choosing a photo on the "Lend an item" form, **Fill in from photo** asks Claude to suggest a title, category and description in the user's language. The user checks and edits it before saving. See [AI features](#ai-features).
+- **AI "describe the job" search (optional):** on Browse, describe a job ("hang a heavy mirror") and Claude lists the things you'd borrow for it; the app then shows who lends each one.
+- **AI dugnad planner (optional):** on the Tasks step of the dugnad wizard, Claude suggests tasks and equipment from the event details; the organiser ticks what to keep.
 
 ## AI features
 
@@ -38,6 +40,12 @@ AI is optional and off by default. To switch it on, create an API key at [platfo
 | `AI_HOURLY_LIMIT` | `20` | Photo suggestions per user per hour, to cap costs |
 
 **Fill in from photo** (`src/ai.js`, `POST /items/suggest`): the photo (already shrunk to max 1600 px in the browser) goes to Claude with a JSON schema, so the answer always has a title, one of the app's categories and a description. It fills the empty fields (or replaces all three when they're already filled in), never touches the pick-up location, and nothing is saved until the user submits the form. One suggestion costs about $0.01 with Claude Opus 5.5, or about $0.0003 with Claude Haiku 5.5. If the photo shows no item, Claude declines, or the API is down, the user sees a short message and fills in the form as usual. The form tells users their photo is sent to Claude (Anthropic).
+
+**Describe the job** (`GET /items/ask`): Claude turns the request into up to 6 things to borrow, each with search words in English and Norwegian, and the app looks them up in the item library, own neighbourhood first. Claude never invents items: everything shown is a real listing, and needs nobody lends say so. The same question asked again within 6 hours is answered from memory at no cost. About $0.01 per new question with Opus.
+
+**Dugnad planner** (`POST /dugnad/:id/ai-plan`, then `/ai-plan/apply`): from the title, kind, description, date, place, expected people and anything the organiser adds, Claude suggests up to 8 tasks and 12 pieces of equipment, linked to the tasks they're for, and tells the organiser how many matching items neighbours already lend. It knows what's already planned, so asking again fills gaps instead of repeating. Nothing is saved until the organiser ticks suggestions and clicks **Add selected**, and each one goes through the same checks as a task or item added by hand. About $0.03 per plan with Opus; it can take up to 30 seconds.
+
+Every AI answer is limited to `AI_HOURLY_LIMIT` per user per hour, counted separately for each feature.
 
 ## Tech stack
 
@@ -217,7 +225,7 @@ src/
   storage.js       S3 or local photo storage
   notify.js        in-app notifications + email (SNS on AWS, else SES / console)
   mailer.js        sends queued emails from SQS through SES (AWS)
-  ai.js            AI features with Claude (photo → listing suggestion)
+  ai.js            AI features with Claude: listing from a photo, "describe the job" search, dugnad planner
   jobs.js          return reminders and overdue alerts, and Dugnad reminders
   loan-requests.js creating a loan request (item page and Dugnad planner)
   dugnad.js        Dugnad rules: access, registration, tasks, equipment status, reminders

@@ -19,6 +19,7 @@
   </ol>
 
   <% if (error) { %><div class="flash flash-error" role="alert"><%= error %></div><% } %>
+  <% if (aiEnabled() && step < 4) { %><p class="small muted ai-hint">✨ <%= t('dugnad.ai_hint') %></p><% } %>
 
   <%# ---------- Step 1: basics ---------- %>
   <% if (step === 1) { %>
@@ -143,6 +144,7 @@
 
   <%# ---------- Step 4: tasks ---------- %>
   <% } else if (step === 4) { %>
+  <%- include('../partials/dugnad-ai-plan', { id }) %>
   <section class="card">
     <h2><%= t('dugnad.step.tasks') %></h2>
     <p class="muted small"><%= t('dugnad.tasks_intro') %></p>
@@ -184,6 +186,7 @@
 
   <%# ---------- Step 5: equipment ---------- %>
   <% } else if (step === 5) { %>
+  <%- include('../partials/dugnad-ai-plan', { id }) %>
   <section class="card">
     <h2><%= t('dugnad.step.equipment') %></h2>
     <p class="muted small"><%= t('dugnad.equipment_intro') %></p>

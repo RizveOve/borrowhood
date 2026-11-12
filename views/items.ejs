@@ -52,6 +52,7 @@
       </div>
       <a href="/items/new" class="btn btn-primary btn-sm desk-only">+ <%= t('browse.lend_cta') %></a>
     </div>
+    <% if (aiEnabled()) { %><%- include('partials/ask-form', { q: '' }) %><% } %>
     <% if (!user.neighbourhood_id && user.role !== 'admin') { %>
       <a href="/neighbourhood" class="card card-soft row link-card">
         <div class="grow"><strong><%= t('browse.join_title') %></strong><div class="small muted"><%= t('browse.join_text') %></div></div><span>→</span>
@@ -65,19 +66,7 @@
       </div>
     <% } else { %>
       <ul class="grid">
-        <% items.forEach(it => { const near = !it.is_org && it.owner_hood && it.owner_hood === user.neighbourhood_id; %>
-          <li><a href="/items/<%= it.id %>" class="tile">
-            <div class="thumb"><%- include('partials/thumb', { it }) %>
-              <% if (it.is_org) { %><span class="tag tag-org"><%= t('tag.org') %></span><% } else if (near) { %><span class="tag tag-near"><%= t('tag.near') %></span><% } %>
-            </div>
-            <div class="tile-body">
-              <strong><%= it.title %></strong>
-              <span class="muted small clamp"><%= it.is_org ? t('item.community_room') : (it.hood_name || t('item.no_hood')) %></span>
-              <% if (it.out_until) { %><span class="badge badge-warn"><%= t('item.out_until', { date: fmtDate(it.out_until) }) %></span>
-              <% } else { %><span class="badge badge-ok"><%= t('item.available') %></span><% } %>
-            </div>
-          </a></li>
-        <% }) %>
+        <% items.forEach(it => { %><%- include('partials/item-tile', { it }) %><% }) %>
       </ul>
     <% } %>
   </section>

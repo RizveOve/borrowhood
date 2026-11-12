@@ -1,0 +1,12 @@
+<% const near = !it.is_org && it.owner_hood && it.owner_hood === user.neighbourhood_id; %>
+<li><a href="/items/<%= it.id %>" class="tile">
+  <div class="thumb"><%- include('thumb', { it }) %>
+    <% if (it.is_org) { %><span class="tag tag-org"><%= t('tag.org') %></span><% } else if (near) { %><span class="tag tag-near"><%= t('tag.near') %></span><% } %>
+  </div>
+  <div class="tile-body">
+    <strong><%= it.title %></strong>
+    <span class="muted small clamp"><%= it.is_org ? t('item.community_room') : (it.hood_name || t('item.no_hood')) %></span>
+    <% if (it.out_until) { %><span class="badge badge-warn"><%= t('item.out_until', { date: fmtDate(it.out_until) }) %></span>
+    <% } else { %><span class="badge badge-ok"><%= t('item.available') %></span><% } %>
+  </div>
+</a></li>

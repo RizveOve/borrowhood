@@ -105,6 +105,48 @@ router.post('/items/suggest', requireAuth, requireHood, async (req, res) => {
   }
 });
 
+// Items whose title or description contains any of the words. Own neighbourhood first, then the
+// BorrowHood shelf, then others; available before lent out.
+function findItems(user, words, limit = 8) {
+  words = [...new Set(words.map((w) => String(w).toLowerCase().trim()).filter((w) => w.length >= 3))].slice(0, 12);
+  if (!words.length) return [];
+  return db.prepare(`
+    SELECT * FROM (
+      SELECT i.*, u.neighbourhood_id AS owner_hood, n.name AS hood_name,
+        (SELECT MAX(l.end_date) FROM loans l
+          WHERE l.item_id = i.id AND l.status = 'approved' AND l.start_date <= ?) AS out_until
+      FROM items i JOIN users u ON u.id = i.owner_id
+      LEFT JOIN neighbourhoods n ON n.id = u.neighbourhood_id
+      WHERE ${words.map(() => '(LOWER(i.title) LIKE ? OR LOWER(i.description) LIKE ?)').join(' OR ')}
+    ) i
+    ORDER BY CASE WHEN i.is_org = 0 AND i.owner_hood = ? THEN 0 WHEN i.is_org = 1 THEN 1 ELSE 2 END,
+      i.out_until IS NOT NULL, i.created_at DESC
+    LIMIT ?`).all(today(), ...words.flatMap((w) => [`%${w}%`, `%${w}%`]), user.neighbourhood_id ?? -1, limit);
+}
+
+// AI: "describe what you need". Claude lists the things to borrow (with search words in English and
+// Norwegian), and the app shows who lends each one. The results always come from the database.
+router.get('/items/ask', requireAuth, async (req, res) => {
+  const q = String(req.query.q || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+  if (!ai.enabled() || !q) return res.redirect(q ? '/items?q=' + encodeURIComponent(q) : '/items');
+  let answer = ai.cachedNeeds(q, req.lang); // a repeated question is free
+  let error = null;
+  if (answer === undefined) {
+    if (!ai.allow(req.user.id, 'search')) error = 'ai.limit';
+    else {
+      try {
+        answer = await ai.findNeeds(q, req.lang);
+      } catch (e) {
+        console.error('[ai] search failed:', e.message);
+        error = 'ai.failed';
+      }
+    }
+  }
+  if (answer === null) error = 'ask.not_understood';
+  const needs = answer ? answer.needs.map((n) => ({ ...n, items: findItems(req.user, n.keywords) })) : [];
+  res.render('items-ask', { title: req.t('ask.title_short'), q, needs, tip: answer ? answer.tip : '', error, wide: true });
+});
+
 router.get('/items/new', requireAuth, requireHood, (req, res) => {
   res.render('item-form', { title: req.t('form.new_title'), item: {}, error: null });
 });

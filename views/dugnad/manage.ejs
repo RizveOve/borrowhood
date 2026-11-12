@@ -52,7 +52,9 @@
 
 <%# ---------- Tasks ---------- %>
 <section id="tasks">
-  <div class="page-head"><h2><%= t('dugnad.tasks') %></h2><a href="/dugnad/<%= ev.id %>/edit/4" class="btn btn-sm"><%= t('dugnad.edit_tasks') %></a></div>
+  <div class="page-head"><h2><%= t('dugnad.tasks') %></h2>
+    <span class="row-actions"><% if (aiEnabled()) { %><a href="/dugnad/<%= ev.id %>/edit/4#ai-plan" class="btn btn-sm">✨ <%= t('dugnad.ai_title') %></a><% } %>
+    <a href="/dugnad/<%= ev.id %>/edit/4" class="btn btn-sm"><%= t('dugnad.edit_tasks') %></a></span></div>
   <% if (!tasks.length) { %><p class="muted small" role="status"><%= t('dugnad.no_tasks') %></p><% } %>
   <% tasks.forEach(tk => { const free = registered.filter(p => !tk.assigned.some(a => a.user_id === p.user_id)); %>
     <div class="card task-manage">

@@ -6,6 +6,20 @@ document.addEventListener('submit', (e) => {
   if (msg && !confirm(msg)) e.preventDefault();
 });
 
+// Slow buttons (AI answers take a few seconds): show what's happening and stop double clicks.
+document.addEventListener('submit', (e) => {
+  const btn = e.submitter;
+  if (e.defaultPrevented || !btn || !btn.dataset.busy) return;
+  setTimeout(() => {
+    btn.disabled = true;
+    btn.textContent = btn.dataset.busy;
+  });
+});
+// Coming back with the browser's back button shows the page as it was left: re-enable those buttons.
+window.addEventListener('pageshow', (e) => {
+  if (e.persisted && document.querySelector('[data-busy][disabled]')) location.reload();
+});
+
 // Keep the return date on or after the start date.
 const start = document.querySelector('[data-start]');
 const end = document.querySelector('[data-end]');
