@@ -92,6 +92,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 form { margin: 0; }
 .form { display: grid; gap: 14px; margin-bottom: 16px; }
 .form-fields { display: grid; gap: 14px; }
+.ai-status { margin: 6px 2px 0; font-size: 14px; }
 .field { display: grid; gap: 6px; }
 .field > span { font-size: 14px; font-weight: 600; }
 .field em { font-weight: 400; color: var(--muted); font-style: normal; }

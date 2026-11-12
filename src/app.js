@@ -21,7 +21,7 @@ Object.assign(app.locals, {
   fmtDate: util.fmtDate, catEmoji: util.catEmoji, catLabel: util.catLabel,
   CATEGORIES: util.CATEGORIES, HOOD_KINDS: util.HOOD_KINDS, STATE_LABEL: util.STATE_LABEL,
   loanState: util.loanState, photoStep: util.photoStep, today: util.today,
-  navTabs, asset, dn: require('./dugnad'),
+  navTabs, asset, dn: require('./dugnad'), aiEnabled: require('./ai').enabled,
 });
 
 // Versioned URLs for CSS/JS so browsers pick up changes immediately (they are cached for a day).

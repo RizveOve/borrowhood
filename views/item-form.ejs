@@ -14,6 +14,12 @@
     </span>
   </label>
   <div class="form-fields">
+    <% if (aiEnabled()) { %>
+    <div class="ai-suggest" data-ai hidden>
+      <button type="button" class="btn btn-block" data-ai-suggest data-working="<%= t('ai.working') %>" data-done="<%= t('ai.done') %>" data-failed="<%= t('ai.failed') %>" data-format="<%= t('ai.format') %>">✨ <%= t('ai.suggest') %></button>
+      <p class="ai-status muted" data-ai-status aria-live="polite"><%= t('ai.note') %></p>
+    </div>
+    <% } %>
     <label class="field"><span><%= t('form.title') %></span>
       <input name="title" value="<%= item.title || '' %>" placeholder="<%= t('form.title_ph') %>" maxlength="80" required></label>
     <label class="field"><span><%= t('form.category') %></span>

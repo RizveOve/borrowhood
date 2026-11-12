@@ -54,18 +54,59 @@ async function shrinkFile(file) {
 const photo = document.querySelector('[data-photo]');
 const preview = document.querySelector('[data-preview]');
 if (photo && preview) {
-  photo.addEventListener('change', async () => {
+  photo.addEventListener('change', () => {
+    // photo.ready settles once the shrunk photo is in place, so other code can wait for it.
+    photo.ready = (async () => {
+      const file = photo.files[0];
+      if (!file || !file.type.startsWith('image/')) return;
+      preview.innerHTML = '';
+      const img = document.createElement('img');
+      img.alt = '';
+      img.src = URL.createObjectURL(file);
+      preview.appendChild(img);
+      if (!window.DataTransfer) return;
+      const dt = new DataTransfer();
+      dt.items.add(await shrinkFile(file));
+      photo.files = dt.files;
+    })();
+  });
+}
+
+// Item form: "Fill in from photo" asks Claude for a title, category and description (shown when AI is on).
+// It fills the empty fields; if all three are already filled in, a click replaces them.
+const aiBox = document.querySelector('[data-ai]');
+if (aiBox && photo) {
+  const btn = aiBox.querySelector('[data-ai-suggest]');
+  const status = aiBox.querySelector('[data-ai-status]');
+  const field = (name) => photo.form.elements.namedItem(name);
+  photo.addEventListener('change', () => { aiBox.hidden = !photo.files[0]; });
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    await photo.ready; // a big photo may still be shrinking
     const file = photo.files[0];
-    if (!file || !file.type.startsWith('image/')) return;
-    preview.innerHTML = '';
-    const img = document.createElement('img');
-    img.alt = '';
-    img.src = URL.createObjectURL(file);
-    preview.appendChild(img);
-    if (!window.DataTransfer) return;
-    const dt = new DataTransfer();
-    dt.items.add(await shrinkFile(file));
-    photo.files = dt.files;
+    if (!file) return void (btn.disabled = false);
+    // HEIC (iPhone / Mac Photos) can't be read by most browsers or by Claude.
+    if (!/^image\/(jpeg|png|webp|gif)$/.test(file.type)) {
+      status.textContent = btn.dataset.format;
+      btn.disabled = false;
+      return;
+    }
+    status.textContent = btn.dataset.working;
+    try {
+      const body = new FormData();
+      body.append('photo', file);
+      const r = await fetch('/items/suggest', { method: 'POST', body });
+      const s = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(s.error || btn.dataset.failed);
+      const names = ['title', 'category', 'description'];
+      const replace = names.every((n) => field(n).value.trim());
+      for (const n of names) if (replace || !field(n).value.trim()) field(n).value = s[n];
+      status.textContent = btn.dataset.done;
+    } catch (e) {
+      status.textContent = e.message || btn.dataset.failed;
+    } finally {
+      btn.disabled = false;
+    }
   });
 }
 

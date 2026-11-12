@@ -5,6 +5,7 @@ const { requireAuth, requireHood, flash, isAdmin } = require('../auth');
 const { getItem, canManage } = require('../items');
 const { savePhoto, deletePhoto, sendPhoto, ALLOWED_TYPES } = require('../storage');
 const { today, CAT_KEYS } = require('../util');
+const ai = require('../ai');
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -86,6 +87,22 @@ router.get('/items', requireAuth, (req, res) => {
     GROUP BY n.id ORDER BY n.name`).all();
   const active = ['category', 'hood', 'avail'].filter((k) => f[k]).length + (f.q ? 1 : 0);
   res.render('items', { title: req.t('browse.title'), items, f, hoods, SORTS, active, catCounts, wide: true });
+});
+
+// AI: suggest a title, category and description from the item photo (used by the item form's script).
+router.post('/items/suggest', requireAuth, requireHood, async (req, res) => {
+  if (!ai.enabled()) return res.sendStatus(404);
+  const uploadError = await parseUpload(req, res);
+  if (uploadError || !req.file) return res.status(400).json({ error: req.t('err.photo') });
+  if (!ai.allow(req.user.id)) return res.status(429).json({ error: req.t('ai.limit') });
+  try {
+    const suggestion = await ai.suggestListing({ image: req.file.buffer, mediaType: req.file.mimetype, lang: req.lang });
+    if (!suggestion) return res.status(422).json({ error: req.t('ai.no_item') });
+    res.json(suggestion);
+  } catch (e) {
+    console.error('[ai] listing suggestion failed:', e.message);
+    res.status(502).json({ error: req.t('ai.failed') });
+  }
 });
 
 router.get('/items/new', requireAuth, requireHood, (req, res) => {

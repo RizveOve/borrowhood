@@ -21,6 +21,23 @@ AWS re/Start Portfolio Project.
 - **English / Norwegian (bokmål):** the EN/NO toggle in the header switches the whole app. Logged-in users keep their choice, and their notifications and emails are written in it. Visitors get Norwegian automatically if their browser asks for it. Strings live in `src/i18n.js`.
 - **Master admin:** a dashboard with stats, overdue loans, every neighbourhood, user, item and loan. The admin can delete users, items and neighbourhoods, rotate join codes and run the reminder job on demand.
 - **Organisation items (the BorrowHood shelf):** items owned by BorrowHood itself, visible to every neighbourhood, with requests approved by the admin. Six are seeded on first start.
+- **AI listing from a photo (optional):** after choosing a photo on the "Lend an item" form, **Fill in from photo** asks Claude to suggest a title, category and description in the user's language. The user checks and edits it before saving. See [AI features](#ai-features).
+
+## AI features
+
+AI is optional and off by default. To switch it on, create an API key at [platform.claude.com](https://platform.claude.com) and set `ANTHROPIC_API_KEY`:
+
+- **Locally:** add it to `.env`.
+- **Netlify:** Site configuration → Environment variables, then redeploy.
+- **AWS:** store it as a secret, then run `deploy/aws/deploy.sh` (CloudShell works too):
+  `aws ssm put-parameter --name /borrowhood/secrets/ANTHROPIC_API_KEY --type SecureString --value 'sk-ant-...'`
+
+| Setting | Default | |
+|---|---|---|
+| `AI_MODEL` | `claude-opus-5-5` | `claude-haiku-5-5` is about 40× cheaper and a little less accurate |
+| `AI_HOURLY_LIMIT` | `20` | Photo suggestions per user per hour, to cap costs |
+
+**Fill in from photo** (`src/ai.js`, `POST /items/suggest`): the photo (already shrunk to max 1600 px in the browser) goes to Claude with a JSON schema, so the answer always has a title, one of the app's categories and a description. It fills the empty fields (or replaces all three when they're already filled in), never touches the pick-up location, and nothing is saved until the user submits the form. One suggestion costs about $0.01 with Claude Opus 5.5, or about $0.0003 with Claude Haiku 5.5. If the photo shows no item, Claude declines, or the API is down, the user sees a short message and fills in the form as usual. The form tells users their photo is sent to Claude (Anthropic).
 
 ## Tech stack
 
@@ -147,6 +164,7 @@ Emails are published to SNS, queued in SQS and sent by a worker inside the app, 
 - Logs: CloudWatch log group `/borrowhood/app`, or on the server `tail -f /var/log/borrowhood/app.log`.
 - Shell: `aws ssm start-session --target <InstanceId>`.
 - Change the admin password: update the SSM parameter `/borrowhood/secrets/ADMIN_PASSWORD` and deploy.
+- Turn on AI: store the key as `/borrowhood/secrets/ANTHROPIC_API_KEY` (see [AI features](#ai-features)) and deploy.
 - Backups: Litestream streams every database change to `s3://<DataBucket>/litestream/` (kept 7 days). A fresh instance restores it automatically on boot. The data bucket is kept even if the stack is deleted.
 - Remove everything: `aws cloudformation delete-stack --stack-name borrowhood` (empty the frontend bucket first), then delete the data bucket and the `borrowhood-monthly` budget if you don't need them.
 
@@ -199,6 +217,7 @@ src/
   storage.js       S3 or local photo storage
   notify.js        in-app notifications + email (SNS on AWS, else SES / console)
   mailer.js        sends queued emails from SQS through SES (AWS)
+  ai.js            AI features with Claude (photo → listing suggestion)
   jobs.js          return reminders and overdue alerts, and Dugnad reminders
   loan-requests.js creating a loan request (item page and Dugnad planner)
   dugnad.js        Dugnad rules: access, registration, tasks, equipment status, reminders

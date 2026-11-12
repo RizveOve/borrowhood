@@ -109,6 +109,16 @@ Ask for these before you start:
 
    Let the user review and submit it. Until AWS approves it (usually within 24 hours), emails only reach verified addresses.
 
+## Part 5 (optional): Turn on the AI features
+
+1. The user creates a Claude API key at <https://platform.claude.com> → **API keys** (they must sign in and add billing themselves). Do not read or copy the key; let the user paste it.
+2. In CloudShell, let the user run this with their key in place of `sk-ant-...`:
+   ```bash
+   aws ssm put-parameter --name /borrowhood/secrets/ANTHROPIC_API_KEY --type SecureString --value 'sk-ant-...'
+   cd ~/borrowhood && deploy/aws/deploy.sh
+   ```
+3. Open the site → **Lend** → choose a photo. A **✨ Fill in from photo** button should appear under the photo.
+
 ## Updating the site later
 
 After the user pushes new code to GitHub `main`:

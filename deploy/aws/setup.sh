@@ -36,8 +36,15 @@ secret() {
 }
 SESSION_SECRET=$(secret SESSION_SECRET "$(openssl rand -hex 32)")
 ADMIN_PASSWORD=$(secret ADMIN_PASSWORD "$(openssl rand -base64 18 | tr -d '/+=')")
+# Optional: the Claude API key for the AI features. Added by you (see the README); AI stays off without it.
+ANTHROPIC_API_KEY=$(param secrets/ANTHROPIC_API_KEY --with-decryption 2>/dev/null || true)
 umask 077
-{ param config; echo "SESSION_SECRET=$SESSION_SECRET"; echo "ADMIN_PASSWORD=$ADMIN_PASSWORD"; } > "$APP/.env.new"
+{
+  param config
+  echo "SESSION_SECRET=$SESSION_SECRET"
+  echo "ADMIN_PASSWORD=$ADMIN_PASSWORD"
+  if [ -n "$ANTHROPIC_API_KEY" ]; then echo "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY"; fi
+} > "$APP/.env.new"
 mv "$APP/.env.new" "$APP/.env" # root-only; systemd reads it before starting the app
 umask 022
 BUCKET=$(grep '^S3_BUCKET=' "$APP/.env" | cut -d= -f2)
