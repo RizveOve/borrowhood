@@ -1,0 +1,22 @@
+<% if (demo && demo.length) { const [main, ...others] = demo; %>
+<section class="card demo-card" aria-labelledby="demo-title">
+  <h2 id="demo-title">👋 <%= t('demo.title') %></h2>
+  <p class="small muted"><%= t('demo.text') %></p>
+  <form method="post" action="/demo-login">
+    <input type="hidden" name="as" value="<%= main.key %>">
+    <button class="btn btn-primary btn-block"><%= t('demo.button', { name: main.name.split(' ')[0] }) %></button>
+  </form>
+  <% if (others.length) { %>
+    <p class="tiny muted demo-or"><%= t('demo.others') %></p>
+    <div class="demo-others">
+      <% others.forEach(d => { %>
+        <form method="post" action="/demo-login">
+          <input type="hidden" name="as" value="<%= d.key %>">
+          <button class="btn btn-sm" title="<%= d.hood_name || '' %>"><%= d.name %><% if (d.hood_name) { %><span class="tiny muted"> · <%= d.hood_name %></span><% } %></button>
+        </form>
+      <% }) %>
+    </div>
+  <% } %>
+  <p class="tiny muted mb0"><%= t('demo.note') %></p>
+</section>
+<% } %>

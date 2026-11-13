@@ -1,0 +1,6 @@
+<header class="event-head <%= where %>">
+  <p class="eyebrow"><%= dn.catEmoji(ev.category) %> <%= t('dugnad.cat.' + ev.category) %>
+    <% if (ev.visibility === 'private') { %> · 🔒 <%= t('dugnad.private') %><% } %></p>
+  <h1 class="mb0"><%= ev.title %></h1>
+  <p class="muted"><%= t('dugnad.hosted_by', { name: ev.host_name }) %><% if (ev.organizer_name !== ev.host_name) { %> · <%= t('dugnad.organizer') %>: <%= ev.organizer_name %><% } %></p>
+</header>

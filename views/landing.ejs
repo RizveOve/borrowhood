@@ -8,6 +8,7 @@
       <a href="/signup" class="btn btn-primary btn-block"><%= t('landing.cta') %></a>
       <a href="/login" class="btn btn-block"><%= t('landing.have_account') %></a>
     </div>
+    <%- include('partials/demo-login', { demo }) %>
   </section>
   <div class="mosaic" aria-hidden="true">
     <img src="/stock/cordless-drill.jpg" alt=""><img src="/stock/tent.jpg" alt="">
@@ -15,7 +16,7 @@
   </div>
 </div>
 
-<ol class="steps">
+<ol class="how-steps">
   <li><strong><%= t('landing.step1') %></strong><span><%= t('landing.step1_text') %></span></li>
   <li><strong><%= t('landing.step2') %></strong><span><%= t('landing.step2_text') %></span></li>
   <li><strong><%= t('landing.step3') %></strong><span><%= t('landing.step3_text') %></span></li>

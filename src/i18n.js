@@ -202,6 +202,10 @@ const en = {
   'msg.n_new': '{name} sent you a message about "{title}": {preview}', 'msg.mail_new': 'New message from {name} about "{title}"',
 
 
+  'demo.title': 'Just looking? Try the demo', 'demo.text': 'Sign in to a ready-made neighbourhood with items, loans and dugnads. No password needed.',
+  'demo.button': 'Try the demo as {name}', 'demo.others': 'Or explore as another neighbour:',
+  'demo.note': 'Demo accounts are shared by everyone trying the app, so please keep it friendly.',
+  'demo.gone': 'That demo account is not available.',
   'err.not_found': 'Not found', 'err.not_found_text': "We couldn't find that page.", 'err.server': 'Something went wrong',
   'err.server_text': 'Please try again in a moment.', 'err.forbidden': 'Not allowed', 'err.admins_only': 'Admins only.',
 };
@@ -409,6 +413,10 @@ const nb = {
   'msg.n_new': '{name} sendte deg en melding om «{title}»: {preview}', 'msg.mail_new': 'Ny melding fra {name} om «{title}»',
 
 
+  'demo.title': 'Bare nysgjerrig? Prøv demoen', 'demo.text': 'Logg inn i et ferdig nabolag med ting, utlån og dugnader. Du trenger ikke passord.',
+  'demo.button': 'Prøv demoen som {name}', 'demo.others': 'Eller utforsk som en annen nabo:',
+  'demo.note': 'Demokontoene deles av alle som prøver appen, så hold det hyggelig.',
+  'demo.gone': 'Den demokontoen er ikke tilgjengelig.',
   'err.not_found': 'Fant ikke siden', 'err.not_found_text': 'Vi fant ikke det du lette etter.', 'err.server': 'Noe gikk galt',
   'err.server_text': 'Prøv igjen om litt.', 'err.forbidden': 'Ikke tillatt', 'err.admins_only': 'Kun for admin.',
 };

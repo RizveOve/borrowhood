@@ -1,6 +1,7 @@
 <%- include('partials/top') %>
 <div class="narrow">
 <h1><%= t('login.title') %></h1>
+<%- include('partials/demo-login', { demo }) %>
 <% if (error) { %><div class="flash flash-error"><%= error %></div><% } %>
 <form method="post" action="/login" class="form">
   <input type="hidden" name="next" value="<%= values.next || '' %>">

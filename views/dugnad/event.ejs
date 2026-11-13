@@ -3,13 +3,12 @@
    const canSeeAddress = going || invited; const here = 'event';
    const joinable = ev.status === 'published' && !reason && !myStatus; %>
 <a href="/dugnad" class="back">← <%= t('dugnad.title') %></a>
+<%# Phones and tablets show the title above the date and sign-up card; desktop keeps it beside them. %>
+<%- include('../partials/dugnad-event-head', { where: 'event-head-small' }) %>
 <div class="dugnad-event">
   <article class="event-main">
     <% if (ev.cover_photo_key) { %><div class="hero-img event-cover"><img src="/photos/<%= ev.cover_photo_key %>" alt=""></div><% } %>
-    <p class="eyebrow"><%= dn.catEmoji(ev.category) %> <%= t('dugnad.cat.' + ev.category) %>
-      <% if (ev.visibility === 'private') { %> · 🔒 <%= t('dugnad.private') %><% } %></p>
-    <h1 class="mb0"><%= ev.title %></h1>
-    <p class="muted"><%= t('dugnad.hosted_by', { name: ev.host_name }) %><% if (ev.organizer_name !== ev.host_name) { %> · <%= t('dugnad.organizer') %>: <%= ev.organizer_name %><% } %></p>
+    <%- include('../partials/dugnad-event-head', { where: 'event-head-desk' }) %>
 
     <% if (ev.status !== 'published') { %>
       <div class="flash <%= ev.status === 'cancelled' ? 'flash-error' : '' %>" role="status"><strong><%= t('dugnad.status.' + ev.status) %></strong> — <%= t('dugnad.status_note.' + ev.status) %></div>
